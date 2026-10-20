@@ -7,7 +7,7 @@ import {
   ABOUT, CLIENTS, CONTACT, FAQ, HERO_SLIDES, NAV, PILLARS, SEGMENTS, SERVICES, STEPS, img, waLink,
 } from './data.js';
 import { reduced, useInView } from './fx.js';
-import LogoMark from './LogoMark.jsx';
+import ScannerEye from './ScannerEye.jsx';
 import Gallery from './Gallery.jsx';
 import PresenceMap from './PresenceMap.jsx';
 
@@ -102,16 +102,17 @@ function Intro() {
     if (phase === 'done') { document.body.classList.remove('is-intro'); return undefined; }
     document.body.classList.add('is-intro');
     try { sessionStorage.setItem(INTRO_KEY, '1'); } catch { /* sin almacenamiento */ }
-    const t1 = setTimeout(() => setPhase('out'), 1600);
-    const t2 = setTimeout(() => setPhase('done'), 2100);
+    const t1 = setTimeout(() => setPhase('out'), 2200);
+    const t2 = setTimeout(() => setPhase('done'), 2700);
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, [phase === 'done']);
 
   if (phase === 'done') return null;
   return (
     <div className={`intro ${phase === 'out' ? 'is-out' : ''}`} aria-hidden="true" onClick={() => setPhase('done')}>
-      <LogoMark size={132} />
+      <ScannerEye className="intro__mark" />
       <p className="intro__word">SOTEC</p>
+      <p className="intro__tag">Tu acceso eficaz a la seguridad tecnológica</p>
     </div>
   );
 }
@@ -461,7 +462,7 @@ function CtaBand() {
               </a>
             </div>
           </div>
-          <LogoMark play={inView} idle size={220} className="cta__mark" />
+          <ScannerEye play={inView} className="cta__mark" />
         </div>
       </div>
     </section>

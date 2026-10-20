@@ -348,6 +348,7 @@ body.menu-open .wa-float, body.menu-open .to-top { opacity: 0; pointer-events: n
   *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
   .reveal { opacity: 1; transform: none; }
   .reveal--img::after { display: none; }
+  .scan { opacity: 1; transform: none; }
   .clients__viewport { overflow-x: auto; }
 }
 
@@ -442,47 +443,44 @@ h3 { letter-spacing: -0.01em; font-weight: 700; }
 @keyframes clientsScroll { to { transform: translateX(calc(-50% - var(--gap) / 2)); } }
 
 
-/* Emblema animado */
-.logomark { display: block; overflow: visible; }
-.logomark .lm-draw { fill: none; stroke: var(--green); stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 1; }
-.logomark .lm-ring path { stroke-width: 11; }
-.logomark .lm-hex { stroke-width: 8; }
-.logomark .lm-lines { fill: none; stroke: #9a9b9d; stroke-width: 1.6; opacity: 0; }
-.logomark .lm-lines path:first-child { stroke-dasharray: 2 6; }
-.logomark .lm-nodes circle { fill: #58595b; stroke: #9a9b9d; stroke-width: 2; transform-box: fill-box; transform-origin: center; transform: scale(0); }
-.logomark .lm-eye { transform-box: fill-box; transform-origin: center; transform: scale(0.4); opacity: 0; }
-.logomark .lm-eye__rim { fill: #262827; stroke: #b9babc; stroke-width: 3; }
-.logomark .lm-eye__pupil { fill: #141515; transform-box: fill-box; transform-origin: center; }
-.logomark .lm-eye__glint { fill: rgba(255, 255, 255, 0.85); }
-.logomark.is-play .lm-ring__a { animation: lmDraw 0.9s var(--ease) both; }
-.logomark.is-play .lm-ring__b { animation: lmDraw 0.6s var(--ease) 0.35s both; }
-.logomark.is-play .lm-hex { animation: lmDraw 0.9s var(--ease) 0.25s both; }
-.logomark.is-play .lm-lines { animation: lmFade 0.5s ease 0.6s both; }
-.logomark.is-play .lm-eye { animation: lmEye 0.6s var(--ease) 0.55s both; }
-.logomark.is-play .lm-nodes circle { animation: lmPop 0.45s var(--ease) both; animation-delay: calc(0.9s + var(--i) * 0.07s); }
-.logomark.is-play .lm-eye__pupil { animation: lmPupil 0.8s ease 1.2s both; }
-.logomark.is-idle.is-play .lm-ring { transform-box: view-box; transform-origin: center; animation: lmSpin 40s linear 1.6s infinite; }
-.logomark.is-idle.is-play .lm-eye__pupil { animation: lmPupil 0.8s ease 1.2s both, lmBreathe 5s ease-in-out 2.2s infinite; }
-@keyframes lmDraw { to { stroke-dashoffset: 0; } }
-@keyframes lmFade { to { opacity: 1; } }
-@keyframes lmEye { to { transform: scale(1); opacity: 1; } }
-@keyframes lmPop { 0% { transform: scale(0); } 70% { transform: scale(1.25); } 100% { transform: scale(1); } }
-@keyframes lmPupil { 0% { transform: scale(1); } 40% { transform: scale(0.7); } 100% { transform: scale(1); } }
-@keyframes lmBreathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(0.82); } }
-@keyframes lmSpin { to { transform: rotate(360deg); } }
-
 /* Pantalla de entrada */
-.intro { position: fixed; inset: 0; z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; background: #fff; cursor: pointer; transition: opacity 0.5s ease, visibility 0s 0.5s; }
+.intro { position: fixed; inset: 0; z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; background: radial-gradient(600px 400px at 50% 40%, rgba(59, 163, 14, 0.22), transparent 70%), var(--dark); cursor: pointer; transition: opacity 0.5s ease, visibility 0s 0.5s; }
 .intro.is-out { opacity: 0; visibility: hidden; }
-.intro.is-out .logomark { transform: scale(0.92); transition: transform 0.5s var(--ease); }
-.intro__word { margin: 0; font-family: var(--display); font-weight: 800; font-size: 1.6rem; letter-spacing: 0.32em; padding-left: 0.32em; color: var(--ink); animation: lmWord 0.7s var(--ease) 0.9s both; }
+.intro__mark { width: min(240px, 60vw); margin-bottom: 18px; animation: introIn 0.9s var(--ease) both; }
+.intro.is-out .intro__mark { transform: scale(0.92); transition: transform 0.5s var(--ease); }
+.intro__tag { margin: 0; font-size: 0.85rem; color: rgba(255, 255, 255, 0.65); animation: heroIn 0.7s var(--ease) 1.1s both; }
+@keyframes introIn { from { opacity: 0; transform: scale(0.8) rotate(-10deg); } to { opacity: 1; transform: none; } }
+.intro__word { margin: 0; font-family: var(--display); font-weight: 800; font-size: 1.6rem; letter-spacing: 0.32em; padding-left: 0.32em; color: #fff; animation: lmWord 0.7s var(--ease) 0.9s both; }
 @keyframes lmWord { from { opacity: 0; letter-spacing: 0.6em; } to { opacity: 1; letter-spacing: 0.32em; } }
 body.is-intro .hero__inner > *, body.is-intro .hero__bottom { animation-play-state: paused; }
 
 /* Banda de llamado con el emblema */
 .cta__copy { flex: 1; }
 .cta__copy .cta__actions { margin-top: 28px; }
-.cta__mark { flex: none; width: 220px; height: 220px; margin: -20px 8px -20px 0; }
+.cta__mark { flex: none; width: 300px; margin: -24px 40px -24px 0; }
+
+/* Escáner animado (versión de la primera entrega) */
+.scan { position: relative; aspect-ratio: 1; opacity: 0; transform: scale(0.85) rotate(-8deg); transition: opacity 0.9s var(--ease), transform 1.1s var(--ease); }
+.scan.is-play { opacity: 1; transform: none; }
+.scan::before { content: ''; position: absolute; inset: 12%; border-radius: 50%; background: radial-gradient(circle, rgba(59, 163, 14, 0.35), transparent 70%); filter: blur(30px); animation: scanGlow 4s ease-in-out infinite; }
+.scan__svg { position: relative; width: 100%; height: 100%; overflow: visible; }
+.scan__ring { transform-origin: 160px 160px; animation: scanSpin 26s linear infinite; }
+.scan__hex { transform-origin: 160px 160px; animation: scanSpin 60s linear infinite reverse; }
+.scan__sweep { transform-origin: 160px 160px; animation: scanSpin 4.5s linear infinite; mix-blend-mode: screen; }
+.scan__pupil { transform-origin: 160px 160px; animation: scanPupil 5s ease-in-out infinite; }
+.scan__node { animation: scanBlink 3s ease-in-out infinite; animation-delay: calc(var(--i) * 0.45s); }
+.scan__chip { position: absolute; display: inline-flex; align-items: center; gap: 8px; padding: 8px 13px; border-radius: 999px; font-size: 0.78rem; font-weight: 600; color: #fff; white-space: nowrap; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.16); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.6); animation: scanFloat 6s ease-in-out infinite; }
+.scan__chip svg { color: #8fe04e; }
+.scan__chip--a { top: 6%; left: -10%; }
+.scan__chip--b { top: 46%; right: -14%; animation-delay: -2s; }
+.scan__chip--c { bottom: 6%; left: -2%; animation-delay: -4s; }
+.scan__live { width: 8px; height: 8px; border-radius: 50%; background: #8fe04e; box-shadow: 0 0 0 0 rgba(143, 224, 78, 0.7); animation: scanPing 1.8s infinite; }
+@keyframes scanSpin { to { transform: rotate(360deg); } }
+@keyframes scanGlow { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
+@keyframes scanPupil { 0%, 100% { transform: scale(1); } 45% { transform: scale(0.75); } 55% { transform: scale(1.1); } }
+@keyframes scanBlink { 0%, 100% { fill: #58595b; } 50% { fill: #3ba30e; } }
+@keyframes scanFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+@keyframes scanPing { 70% { box-shadow: 0 0 0 10px rgba(143, 224, 78, 0); } 100% { box-shadow: 0 0 0 0 rgba(143, 224, 78, 0); } }
 
 /* Tablet */
 @media (max-width: 1080px) {
@@ -500,7 +498,7 @@ body.is-intro .hero__inner > *, body.is-intro .hero__bottom { animation-play-sta
   .services { grid-template-columns: 1fr; }
   .hero__bottom { flex-direction: column; align-items: flex-start; }
   .cta { padding: 40px; }
-  .cta__mark { width: 160px; height: 160px; margin: 0; }
+  .cta__mark { width: 230px; margin: 0 30px 0 0; }
   .segments { grid-template-columns: 1fr; }
   .about, .presence, .faq, .contact { grid-template-columns: 1fr; gap: 40px; }
   .about__img { aspect-ratio: 16 / 10; }
@@ -525,7 +523,9 @@ body.is-intro .hero__inner > *, body.is-intro .hero__bottom { animation-play-sta
   .cta { padding: 32px 22px; border-radius: 18px; }
   .cta-wrap { padding-bottom: 64px; }
   .cta__actions .btn { flex: 1 1 100%; }
-  .cta__mark { display: none; }
+  .cta { flex-direction: column-reverse; align-items: stretch; }
+  .cta__mark { width: 220px; margin: 8px auto 4px; }
+  .scan__chip { font-size: 0.68rem; padding: 6px 10px; }
   .pillar { padding: 18px 0; }
   .hero__inner { padding: 72px 0; }
   .hero__bg::after { background: rgba(16, 22, 18, 0.72); }
