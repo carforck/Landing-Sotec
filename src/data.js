@@ -17,11 +17,9 @@ export const waLink = (text = 'Hola, quiero información sobre los servicios de 
 export const NAV = [
   { id: 'inicio', label: 'Inicio' },
   { id: 'servicios', label: 'Servicios' },
-  { id: 'soluciones', label: 'Soluciones' },
   { id: 'nosotros', label: 'Nosotros' },
-  { id: 'galeria', label: 'Galería' },
-  { id: 'presencia', label: 'Presencia' },
-  { id: 'faq', label: 'Preguntas' },
+  { id: 'galeria', label: 'Proyectos' },
+  { id: 'presencia', label: 'Cobertura' },
   { id: 'contacto', label: 'Contacto' },
 ];
 
@@ -177,16 +175,11 @@ export const FAQ = [
   },
 ];
 
-export const KEYWORDS = [
-  'CCTV', 'Control de acceso', 'Fibra óptica', 'Energía solar', 'Domótica', 'Alarmas',
-  'Redes WiFi', 'Contra incendio', 'Conteo de personas', 'Cableado estructurado',
-];
 
 export const img = (name) => `${import.meta.env.BASE_URL}img/${name}.webp`;
 
-export const HERO_SLIDES = ['control-acceso-torniquetes', 'fibra-optica', 'techo-solar', 'tablero-electrico'];
+export const HERO_SLIDES = ['techo-solar', 'control-acceso-torniquetes', 'tablero-electrico'];
 
-export const HERO_WORDS = ['Protegemos', 'Conectamos', 'Energizamos', 'Automatizamos'];
 
 // Fotos de referencia (banco de imágenes del sitio actual). Reemplazar por fotos reales de proyectos cuando existan.
 export const GALLERY_CATS = ['Todos', 'Seguridad', 'Telecomunicaciones', 'Energía solar', 'Instalación'];
