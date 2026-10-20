@@ -6,7 +6,8 @@ import {
 import {
   ABOUT, CLIENTS, CONTACT, FAQ, HERO_SLIDES, NAV, PILLARS, SEGMENTS, SERVICES, STEPS, img, waLink,
 } from './data.js';
-import { reduced } from './fx.js';
+import { reduced, useInView } from './fx.js';
+import LogoMark from './LogoMark.jsx';
 import Gallery from './Gallery.jsx';
 import PresenceMap from './PresenceMap.jsx';
 
@@ -82,6 +83,37 @@ function useScrollEffects() {
   }, []);
 
   return { scrolled, hidden, active };
+}
+
+/* ---------- Entrada con el logo animado ---------- */
+
+const INTRO_KEY = 'sotec-intro-visto';
+
+function Intro() {
+  // Solo una vez por sesión y nunca con "reducir movimiento".
+  const [phase, setPhase] = useState(() => {
+    try {
+      if (reduced() || sessionStorage.getItem(INTRO_KEY)) return 'done';
+    } catch { /* almacenamiento bloqueado: se muestra igual */ }
+    return 'in';
+  });
+
+  useEffect(() => {
+    if (phase === 'done') { document.body.classList.remove('is-intro'); return undefined; }
+    document.body.classList.add('is-intro');
+    try { sessionStorage.setItem(INTRO_KEY, '1'); } catch { /* sin almacenamiento */ }
+    const t1 = setTimeout(() => setPhase('out'), 1600);
+    const t2 = setTimeout(() => setPhase('done'), 2100);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [phase === 'done']);
+
+  if (phase === 'done') return null;
+  return (
+    <div className={`intro ${phase === 'out' ? 'is-out' : ''}`} aria-hidden="true" onClick={() => setPhase('done')}>
+      <LogoMark size={132} />
+      <p className="intro__word">SOTEC</p>
+    </div>
+  );
 }
 
 /* ---------- Encabezado ---------- */
@@ -412,20 +444,22 @@ function Faq() {
 /* ---------- Llamado a la acción ---------- */
 
 function CtaBand() {
+  const [ref, inView] = useInView(0.4);
   return (
     <section className="cta-wrap" aria-label="Solicitar asesoría">
       <div className="container">
-        <div className="cta reveal">
-          <div>
+        <div className="cta reveal" ref={ref}>
+          <div className="cta__copy">
             <h2>¿Listo para proteger y conectar tu hogar o empresa?</h2>
             <p>Agenda una visita técnica sin compromiso y recibe una propuesta a la medida.</p>
+            <div className="cta__actions">
+              <a href="#contacto" className="btn btn--primary btn--lg">Solicitar cotización</a>
+              <a href={waLink()} target="_blank" rel="noreferrer" className="btn btn--light btn--lg">
+                <WhatsAppGlyph width={18} height={18} /> WhatsApp
+              </a>
+            </div>
           </div>
-          <div className="cta__actions">
-            <a href="#contacto" className="btn btn--primary btn--lg">Solicitar cotización</a>
-            <a href={waLink()} target="_blank" rel="noreferrer" className="btn btn--light btn--lg">
-              <WhatsAppGlyph width={18} height={18} /> WhatsApp
-            </a>
-          </div>
+          <LogoMark play={inView} idle size={220} className="cta__mark" />
         </div>
       </div>
     </section>
@@ -557,6 +591,7 @@ export default function App() {
 
   return (
     <>
+      <Intro />
       <a className="skip" href="#servicios">Ir al contenido</a>
       <TopBar />
       <Header scrolled={scrolled} hidden={hidden} active={active} />

@@ -440,6 +440,49 @@ h3 { letter-spacing: -0.01em; font-weight: 700; }
 .client--placeholder span { font-family: var(--font); font-size: 0.8rem; font-weight: 500; color: #9aa29d; }
 @keyframes clientsScroll { to { transform: translateX(calc(-50% - var(--gap) / 2)); } }
 
+
+/* Emblema animado */
+.logomark { display: block; overflow: visible; }
+.logomark .lm-draw { fill: none; stroke: var(--green); stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 1; }
+.logomark .lm-ring path { stroke-width: 11; }
+.logomark .lm-hex { stroke-width: 8; }
+.logomark .lm-lines { fill: none; stroke: #9a9b9d; stroke-width: 1.6; opacity: 0; }
+.logomark .lm-lines path:first-child { stroke-dasharray: 2 6; }
+.logomark .lm-nodes circle { fill: #58595b; stroke: #9a9b9d; stroke-width: 2; transform-box: fill-box; transform-origin: center; transform: scale(0); }
+.logomark .lm-eye { transform-box: fill-box; transform-origin: center; transform: scale(0.4); opacity: 0; }
+.logomark .lm-eye__rim { fill: #262827; stroke: #b9babc; stroke-width: 3; }
+.logomark .lm-eye__pupil { fill: #141515; transform-box: fill-box; transform-origin: center; }
+.logomark .lm-eye__glint { fill: rgba(255, 255, 255, 0.85); }
+.logomark.is-play .lm-ring__a { animation: lmDraw 0.9s var(--ease) both; }
+.logomark.is-play .lm-ring__b { animation: lmDraw 0.6s var(--ease) 0.35s both; }
+.logomark.is-play .lm-hex { animation: lmDraw 0.9s var(--ease) 0.25s both; }
+.logomark.is-play .lm-lines { animation: lmFade 0.5s ease 0.6s both; }
+.logomark.is-play .lm-eye { animation: lmEye 0.6s var(--ease) 0.55s both; }
+.logomark.is-play .lm-nodes circle { animation: lmPop 0.45s var(--ease) both; animation-delay: calc(0.9s + var(--i) * 0.07s); }
+.logomark.is-play .lm-eye__pupil { animation: lmPupil 0.8s ease 1.2s both; }
+.logomark.is-idle.is-play .lm-ring { transform-box: view-box; transform-origin: center; animation: lmSpin 40s linear 1.6s infinite; }
+.logomark.is-idle.is-play .lm-eye__pupil { animation: lmPupil 0.8s ease 1.2s both, lmBreathe 5s ease-in-out 2.2s infinite; }
+@keyframes lmDraw { to { stroke-dashoffset: 0; } }
+@keyframes lmFade { to { opacity: 1; } }
+@keyframes lmEye { to { transform: scale(1); opacity: 1; } }
+@keyframes lmPop { 0% { transform: scale(0); } 70% { transform: scale(1.25); } 100% { transform: scale(1); } }
+@keyframes lmPupil { 0% { transform: scale(1); } 40% { transform: scale(0.7); } 100% { transform: scale(1); } }
+@keyframes lmBreathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(0.82); } }
+@keyframes lmSpin { to { transform: rotate(360deg); } }
+
+/* Pantalla de entrada */
+.intro { position: fixed; inset: 0; z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; background: #fff; cursor: pointer; transition: opacity 0.5s ease, visibility 0s 0.5s; }
+.intro.is-out { opacity: 0; visibility: hidden; }
+.intro.is-out .logomark { transform: scale(0.92); transition: transform 0.5s var(--ease); }
+.intro__word { margin: 0; font-family: var(--display); font-weight: 800; font-size: 1.6rem; letter-spacing: 0.32em; padding-left: 0.32em; color: var(--ink); animation: lmWord 0.7s var(--ease) 0.9s both; }
+@keyframes lmWord { from { opacity: 0; letter-spacing: 0.6em; } to { opacity: 1; letter-spacing: 0.32em; } }
+body.is-intro .hero__inner > *, body.is-intro .hero__bottom { animation-play-state: paused; }
+
+/* Banda de llamado con el emblema */
+.cta__copy { flex: 1; }
+.cta__copy .cta__actions { margin-top: 28px; }
+.cta__mark { flex: none; width: 220px; height: 220px; margin: -20px 8px -20px 0; }
+
 /* Tablet */
 @media (max-width: 1080px) {
   .nav {
@@ -455,7 +498,8 @@ h3 { letter-spacing: -0.01em; font-weight: 700; }
   .burger { display: inline-flex; }
   .services { grid-template-columns: 1fr; }
   .hero__bottom { flex-direction: column; align-items: flex-start; }
-  .cta { flex-direction: column; align-items: flex-start; padding: 40px; }
+  .cta { padding: 40px; }
+  .cta__mark { width: 160px; height: 160px; margin: 0; }
   .segments { grid-template-columns: 1fr; }
   .about, .presence, .faq, .contact { grid-template-columns: 1fr; gap: 40px; }
   .about__img { aspect-ratio: 16 / 10; }
@@ -480,6 +524,7 @@ h3 { letter-spacing: -0.01em; font-weight: 700; }
   .cta { padding: 32px 22px; border-radius: 18px; }
   .cta-wrap { padding-bottom: 64px; }
   .cta__actions .btn { flex: 1 1 100%; }
+  .cta__mark { display: none; }
   .pillar { padding: 18px 0; }
   .hero__inner { padding: 72px 0; }
   .hero__bg::after { background: rgba(16, 22, 18, 0.72); }
