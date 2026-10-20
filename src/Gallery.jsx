@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { GALLERY, GALLERY_CATS, img } from './data.js';
-import { reduced } from './fx.js';
+import { reduced, useFocusTrap } from './fx.js';
 
 const INITIAL = 8;
 const CYCLE_MS = 6000; // cambio automático de categoría
@@ -33,6 +33,8 @@ export default function Gallery() {
   const [onScreen, setOnScreen] = useState(false);
   const secRef = useRef(null);
   const tabsRef = useRef(null);
+  const boxRef = useRef(null);
+  useFocusTrap(open >= 0, boxRef);
 
   // En celular las pestañas se desplazan: se centra la activa sin mover la página.
   useEffect(() => {
@@ -121,7 +123,7 @@ export default function Gallery() {
       </div>
 
       {cur && (
-        <div className="lightbox" role="dialog" aria-modal="true" aria-label={cur.title} onClick={() => setOpen(-1)}>
+        <div className="lightbox" role="dialog" aria-modal="true" aria-label={cur.title} onClick={() => setOpen(-1)} ref={boxRef}>
           <button className="lightbox__close" aria-label="Cerrar" onClick={() => setOpen(-1)}><X size={24} /></button>
           <button className="lightbox__nav lightbox__nav--prev" aria-label="Anterior" onClick={(e) => { e.stopPropagation(); go(-1); }}>
             <ChevronLeft size={26} />

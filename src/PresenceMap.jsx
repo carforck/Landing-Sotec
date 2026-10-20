@@ -95,17 +95,6 @@ export default function PresenceMap() {
             ))}
           </div>
 
-          <ul className="pcities" onMouseLeave={release}>
-            {points.map((p, i) => (
-              <li key={p.city} className={visible(p) ? '' : 'is-dim'}>
-                <button className={active === i ? 'is-on' : ''} onMouseEnter={() => pick(i)} onFocus={() => pick(i)} onBlur={release}>
-                  <i className={`dot dot--${p.type}`} />
-                  {p.city}
-                  <small>{p.dept}</small>
-                </button>
-              </li>
-            ))}
-          </ul>
         </div>
 
         <div className="pmap reveal" ref={mapRef} onMouseLeave={() => { setHoverDept(null); release(); }}>
@@ -175,6 +164,18 @@ export default function PresenceMap() {
             </div>
           )}
         </div>
+
+        <ul className="pcities reveal" onMouseLeave={release}>
+          {points.map((p, i) => (
+            <li key={p.city} className={visible(p) ? '' : 'is-dim'}>
+              <button className={active === i ? 'is-on' : ''} onMouseEnter={() => pick(i)} onFocus={() => pick(i)} onBlur={release}>
+                <i className={`dot dot--${p.type}`} />
+                {p.city}
+                <small>{p.dept}</small>
+              </button>
+            </li>
+          ))}
+        </ul>
       </div>
     </section>
   );

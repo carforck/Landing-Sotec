@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  ArrowRight, ArrowUp, BadgeDollarSign, Check, Cpu, Facebook, Headset, Instagram, Mail, MapPin, Menu, Minus, Phone,
-  Plus, RadioTower, ShieldCheck, Sun, X,
+  ArrowRight, ArrowUp, BadgeDollarSign, Check, Cpu, Facebook, Headset, Instagram, Mail, MapPin, Menu, Minus, Pause, Phone,
+  Play, Plus, RadioTower, ShieldCheck, Sun, X,
 } from 'lucide-react';
 import {
   ABOUT, CLIENTS, CONTACT, FAQ, HERO_SLIDES, NAV, PILLARS, SEGMENTS, SERVICES, STEPS, img, waLink,
 } from './data.js';
-import { reduced, useInView } from './fx.js';
+import { reduced, useFocusTrap, useInView, useSnapIndex } from './fx.js';
 import ScannerEye from './ScannerEye.jsx';
 import Gallery from './Gallery.jsx';
 import PresenceMap from './PresenceMap.jsx';
@@ -102,8 +102,8 @@ function Intro() {
     if (phase === 'done') { document.body.classList.remove('is-intro'); return undefined; }
     document.body.classList.add('is-intro');
     try { sessionStorage.setItem(INTRO_KEY, '1'); } catch { /* sin almacenamiento */ }
-    const t1 = setTimeout(() => setPhase('out'), 2200);
-    const t2 = setTimeout(() => setPhase('done'), 2700);
+    const t1 = setTimeout(() => setPhase('out'), 1400);
+    const t2 = setTimeout(() => setPhase('done'), 1900);
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, [phase === 'done']);
 
@@ -113,6 +113,18 @@ function Intro() {
       <ScannerEye className="intro__mark" />
       <p className="intro__word">SOTEC</p>
       <p className="intro__tag">Tu acceso eficaz a la seguridad tecnológica</p>
+    </div>
+  );
+}
+
+/* ---------- Puntos de carrusel (solo celular) ---------- */
+
+function SnapDots({ count, index, go, label }) {
+  return (
+    <div className="snap-dots" role="group" aria-label={label}>
+      {Array.from({ length: count }, (_, i) => (
+        <button key={i} className={i === index ? 'is-on' : ''} aria-label={`Ver ${i + 1} de ${count}`} aria-current={i === index} onClick={() => go(i)} />
+      ))}
     </div>
   );
 }
@@ -140,6 +152,7 @@ function TopBar() {
 function Header({ scrolled, hidden, active }) {
   const [open, setOpen] = useState(false);
   const headerRef = useRef(null);
+  useFocusTrap(open, headerRef, () => setOpen(false));
 
   useEffect(() => {
     document.documentElement.style.overflow = open ? 'hidden' : '';
@@ -183,15 +196,16 @@ function Header({ scrolled, hidden, active }) {
 
 function Hero() {
   const [slide, setSlide] = useState(0);
+  const [paused, setPaused] = useState(false);
   // Cada cambio de imagen (automático o por clic) reinicia los 7 segundos.
   useEffect(() => {
-    if (reduced()) return undefined;
+    if (reduced() || paused) return undefined;
     const id = setTimeout(() => setSlide((x) => (x + 1) % HERO_SLIDES.length), SLIDE_MS);
     return () => clearTimeout(id);
-  }, [slide]);
+  }, [slide, paused]);
 
   return (
-    <section id="inicio" className="hero">
+    <section id="inicio" className={`hero ${paused ? 'is-paused' : ''}`}>
       <div className="hero__frame">
       <div className="hero__bg" aria-hidden="true" data-parallax="-0.25">
         {HERO_SLIDES.map((s, i) => (
@@ -199,7 +213,10 @@ function Hero() {
         ))}
       </div>
       <div className="container hero__inner">
-        <p className="hero__kicker">Seguridad electrónica · Telecomunicaciones · Energías renovables</p>
+        <p className="hero__kicker">
+          <span className="hide-sm">Seguridad electrónica · Telecomunicaciones · Energías renovables</span>
+          <span className="show-sm">Seguridad · Redes · Energía</span>
+        </p>
         <h1>Tu acceso eficaz a la seguridad tecnológica</h1>
         <p className="hero__lead">
           Transformamos tus necesidades en soluciones confiables para hogares y empresas, con un equipo experto y
@@ -222,9 +239,12 @@ function Hero() {
         <div className="hero__slides" role="group" aria-label="Imágenes de portada">
           {HERO_SLIDES.map((sl, i) => (
             <button key={sl} className={i === slide ? 'is-on' : ''} onClick={() => setSlide(i)} aria-label={`Imagen ${i + 1} de ${HERO_SLIDES.length}`}>
-              <span key={i === slide ? `on-${slide}` : 'off'} />
+              <span key={i === slide ? `on-${slide}-${paused}` : 'off'} />
             </button>
           ))}
+          <button className="hero__pause" onClick={() => setPaused(!paused)} aria-label={paused ? 'Reanudar imágenes' : 'Pausar imágenes'} aria-pressed={paused}>
+            {paused ? <Play size={14} /> : <Pause size={14} />}
+          </button>
         </div>
       </div>
       </div>
@@ -282,6 +302,8 @@ function Clients() {
 /* ---------- Servicios ---------- */
 
 function Services({ onQuote }) {
+  const trackRef = useRef(null);
+  const [index, go] = useSnapIndex(trackRef);
   return (
     <section id="servicios" className="section">
       <div className="container">
@@ -292,7 +314,7 @@ function Services({ onQuote }) {
           </div>
           <p>Cuatro líneas de servicio que se integran entre sí, con diseño, instalación y soporte a cargo de nuestro equipo técnico.</p>
         </div>
-        <div className="services">
+        <div className="services" ref={trackRef}>
           {SERVICES.map((s, i) => (
             <article className={`service service--${i} reveal`} style={{ '--d': `${i * 60}ms` }} key={s.key}>
               <div className="service__img">
@@ -314,6 +336,7 @@ function Services({ onQuote }) {
             </article>
           ))}
         </div>
+        <SnapDots count={SERVICES.length} index={index} go={go} label="Servicios" />
       </div>
     </section>
   );
@@ -322,6 +345,8 @@ function Services({ onQuote }) {
 /* ---------- Soluciones por tipo de cliente ---------- */
 
 function Segments() {
+  const trackRef = useRef(null);
+  const [index, go] = useSnapIndex(trackRef);
   return (
     <section id="soluciones" className="section section--soft">
       <div className="container">
@@ -332,7 +357,7 @@ function Segments() {
           </div>
           <p>Adaptamos cada proyecto al espacio, al uso y al presupuesto de nuestros clientes.</p>
         </div>
-        <div className="segments">
+        <div className="segments" ref={trackRef}>
           {Object.entries(SEGMENTS).map(([k, s]) => (
             <article className="segment reveal" key={k}>
               <div className="segment__img"><img src={img(s.img)} alt={s.label} loading="lazy" /></div>
@@ -348,6 +373,7 @@ function Segments() {
             </article>
           ))}
         </div>
+        <SnapDots count={Object.keys(SEGMENTS).length} index={index} go={go} label="Soluciones" />
       </div>
     </section>
   );
@@ -400,7 +426,7 @@ function Process() {
         <ol className="steps">
           {STEPS.map((s, i) => (
             <li className="step reveal" style={{ '--d': `${i * 60}ms` }} key={s.title}>
-              <span className="step__num">{String(i + 1).padStart(2, '0')}</span>
+              <span className="step__num" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>
               <h3>{s.title}</h3>
               <p>{s.text}</p>
             </li>

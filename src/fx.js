@@ -49,3 +49,55 @@ export function useCountUp(target, start, duration = 1400) {
   }, [target, start, duration]);
   return value;
 }
+
+// Mantiene el foco del teclado dentro de `ref` mientras `active` sea verdadero y lo devuelve al cerrar.
+export function useFocusTrap(active, ref, onEscape) {
+  const esc = useRef(onEscape);
+  esc.current = onEscape;
+  useEffect(() => {
+    const el = ref.current;
+    if (!active || !el) return undefined;
+    const prev = document.activeElement;
+    const sel = 'a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])';
+    const items = () => [...el.querySelectorAll(sel)].filter((x) => x.getClientRects().length);
+    const onKey = (e) => {
+      if (e.key === 'Escape' && esc.current) { esc.current(); return; }
+      if (e.key !== 'Tab') return;
+      const f = items();
+      if (!f.length) return;
+      const first = f[0];
+      const last = f[f.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      else if (!el.contains(document.activeElement)) { e.preventDefault(); first.focus(); }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      if (prev && typeof prev.focus === 'function') prev.focus({ preventScroll: true });
+    };
+  }, [active]);
+}
+
+// Índice de la tarjeta visible en un carrusel con scroll-snap (para los puntos indicadores).
+export function useSnapIndex(ref) {
+  const [index, setIndex] = useState(0);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    const onScroll = () => {
+      const first = el.firstElementChild;
+      if (!first) return;
+      const step = first.getBoundingClientRect().width + parseFloat(getComputedStyle(el).columnGap || 0);
+      setIndex(Math.round(el.scrollLeft / step));
+    };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => el.removeEventListener('scroll', onScroll);
+  }, []);
+  const go = (i) => {
+    const el = ref.current;
+    const child = el?.children[i];
+    if (child) el.scrollTo({ left: child.offsetLeft - el.offsetLeft - parseFloat(getComputedStyle(el).paddingLeft || 0), behavior: 'smooth' });
+  };
+  return [index, go];
+}
