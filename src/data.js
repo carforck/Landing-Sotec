@@ -223,7 +223,13 @@ export const PRESENCE = [
   { city: 'Cali', dept: 'Valle del Cauca', lat: 3.451, lon: -76.532, type: 'cobertura', text: 'Seguridad electrónica empresarial.' },
 ];
 
-// VALIDAR: clientes reales de SOTEC. Cada uno con su nombre y, si hay, su logo en public/img/clientes/
+// Clientes de SOTEC (confirmados por SOTEC). Cada uno con su nombre y, si hay, su logo en public/img/clientes/
 // (por ejemplo { name: 'Empresa X', logo: 'clientes/empresa-x.webp' }). Sin logo se muestra el nombre.
 // Mientras la lista esté vacía, la franja no aparece en el sitio publicado (solo en desarrollo con recuadros de ejemplo).
-export const CLIENTS = [];
+export const CLIENTS = [
+  { name: 'Ladrillera La Clay', logo: 'clientes/la-clay.webp' },
+  { name: 'Coolechera', logo: 'clientes/coolechera.webp' },
+  { name: 'Olgamar Soluciones' }, // VALIDAR: falta el logo (no tiene sitio web público)
+  { name: 'Fortox Security Group', logo: 'clientes/fortox.webp' },
+  { name: 'Multicentro La Plazuela', logo: 'clientes/multicentro-la-plazuela.webp' },
+];

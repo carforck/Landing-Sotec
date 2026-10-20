@@ -258,13 +258,15 @@ function Clients() {
   const placeholders = import.meta.env.DEV && !CLIENTS.length;
   const list = placeholders ? Array.from({ length: 8 }, (_, i) => ({ name: `Logo cliente ${i + 1}` })) : CLIENTS;
   if (!list.length) return null;
-  // La lista se duplica para que el desplazamiento sea continuo.
-  const row = [...list, ...list];
+  // Se repite hasta tener al menos 12 logos por tramo (llena pantallas anchas) y luego se duplica
+  // para que el desplazamiento sea continuo.
+  const set = Array.from({ length: Math.ceil(12 / list.length) }).flatMap(() => list);
+  const row = [...set, ...set];
   return (
     <section className="clients" aria-label="Clientes">
       <p className="clients__label">Empresas y comunidades que confían en SOTEC</p>
       <div className="clients__viewport">
-        <ul className="clients__track" style={{ '--n': list.length }}>
+        <ul className="clients__track" style={{ '--n': set.length }}>
           {row.map((c, i) => (
             <li key={i} className={`client ${placeholders ? 'client--placeholder' : ''}`} aria-hidden={i >= list.length}>
               {c.logo ? <img src={`${import.meta.env.BASE_URL}img/${c.logo}`} alt={c.name} loading="lazy" /> : <span>{c.name}</span>}

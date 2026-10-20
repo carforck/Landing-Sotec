@@ -438,6 +438,7 @@ h3 { letter-spacing: -0.01em; font-weight: 700; }
 .client:hover span { color: var(--ink); }
 .client--placeholder { width: 160px; border: 1.5px dashed #cfd5d1; border-radius: 12px; }
 .client--placeholder span { font-family: var(--font); font-size: 0.8rem; font-weight: 500; color: #9aa29d; }
+@media (hover: none) { .client img { filter: none; opacity: 0.9; } }
 @keyframes clientsScroll { to { transform: translateX(calc(-50% - var(--gap) / 2)); } }
 
 
