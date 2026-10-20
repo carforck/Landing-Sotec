@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  ArrowRight, BadgeDollarSign, Check, Facebook, Headset, Instagram, Mail, MapPin, Menu, Minus, Phone, Plus,
+  ArrowRight, ArrowUp, BadgeDollarSign, Check, Facebook, Headset, Instagram, Mail, MapPin, Menu, Minus, Phone, Plus,
   ShieldCheck, X,
 } from 'lucide-react';
 import {
   ABOUT, CONTACT, FAQ, HERO_SLIDES, NAV, PILLARS, SEGMENTS, SERVICES, STEPS, img, waLink,
 } from './data.js';
-import { useInterval } from './fx.js';
+import { reduced } from './fx.js';
 import Gallery from './Gallery.jsx';
 import PresenceMap from './PresenceMap.jsx';
 
@@ -18,15 +18,44 @@ const WhatsAppGlyph = (props) => (
   </svg>
 );
 
+const SLIDE_MS = 7000;
+
 const tel = (p) => `tel:${p.replace(/\s/g, '')}`;
 
 function useScrollEffects() {
   const [scrolled, setScrolled] = useState(false);
+  const [hidden, setHidden] = useState(false);
   const [active, setActive] = useState('inicio');
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 8);
-    onScroll();
+    const root = document.documentElement;
+    const still = reduced();
+    let lastY = window.scrollY;
+    let ticking = false;
+    const update = () => {
+      ticking = false;
+      const y = window.scrollY;
+      setScrolled(y > 8);
+      // El encabezado se oculta al bajar y vuelve a aparecer al subir.
+      if (Math.abs(y - lastY) > 6) {
+        setHidden(y > lastY && y > 400 && !document.body.classList.contains('menu-open'));
+        lastY = y;
+      }
+      const max = root.scrollHeight - window.innerHeight;
+      root.style.setProperty('--sp', max > 0 ? (y / max).toFixed(4) : 0);
+      if (!still) {
+        document.querySelectorAll('[data-parallax]').forEach((el) => {
+          const r = el.getBoundingClientRect();
+          if (r.bottom < 0 || r.top > window.innerHeight) return;
+          const offset = (r.top + r.height / 2 - window.innerHeight / 2) * Number(el.dataset.parallax);
+          el.style.setProperty('--py', `${offset.toFixed(1)}px`);
+        });
+      }
+    };
+    const onScroll = () => {
+      if (!ticking) { ticking = true; requestAnimationFrame(update); }
+    };
+    update();
     window.addEventListener('scroll', onScroll, { passive: true });
 
     const revealObs = new IntersectionObserver(
@@ -51,7 +80,7 @@ function useScrollEffects() {
     };
   }, []);
 
-  return { scrolled, active };
+  return { scrolled, hidden, active };
 }
 
 /* ---------- Encabezado ---------- */
@@ -74,7 +103,7 @@ function TopBar() {
   );
 }
 
-function Header({ scrolled, active }) {
+function Header({ scrolled, hidden, active }) {
   const [open, setOpen] = useState(false);
   const headerRef = useRef(null);
 
@@ -88,7 +117,8 @@ function Header({ scrolled, active }) {
   }, [open]);
 
   return (
-    <header ref={headerRef} className={`header ${scrolled ? 'is-scrolled' : ''}`}>
+    <header ref={headerRef} className={`header ${scrolled ? 'is-scrolled' : ''} ${hidden && !open ? 'is-hidden' : ''}`}>
+      <span className="progress" aria-hidden="true" />
       <div className="container header__inner">
         <a href="#inicio" className="brand" aria-label="SOTEC, inicio">
           <img src={img('sotec-emblem')} alt="" width="40" height="40" />
@@ -119,11 +149,16 @@ function Header({ scrolled, active }) {
 
 function Hero() {
   const [slide, setSlide] = useState(0);
-  useInterval(() => setSlide((s) => (s + 1) % HERO_SLIDES.length), 7000);
+  // Cada cambio de imagen (automático o por clic) reinicia los 7 segundos.
+  useEffect(() => {
+    if (reduced()) return undefined;
+    const id = setTimeout(() => setSlide((x) => (x + 1) % HERO_SLIDES.length), SLIDE_MS);
+    return () => clearTimeout(id);
+  }, [slide]);
 
   return (
     <section id="inicio" className="hero">
-      <div className="hero__bg" aria-hidden="true">
+      <div className="hero__bg" aria-hidden="true" data-parallax="-0.25">
         {HERO_SLIDES.map((s, i) => (
           <img key={s} src={img(s)} alt="" className={i === slide ? 'is-on' : ''} />
         ))}
@@ -140,6 +175,13 @@ function Hero() {
           <a href="#servicios" className="btn btn--light btn--lg">Conocer servicios</a>
         </div>
       </div>
+      <div className="container hero__slides" role="group" aria-label="Imágenes de portada">
+        {HERO_SLIDES.map((s, i) => (
+          <button key={s} className={i === slide ? 'is-on' : ''} onClick={() => setSlide(i)} aria-label={`Imagen ${i + 1} de ${HERO_SLIDES.length}`}>
+            <span key={i === slide ? `on-${slide}` : 'off'} />
+          </button>
+        ))}
+      </div>
     </section>
   );
 }
@@ -151,7 +193,7 @@ function Pillars() {
         {PILLARS.map((p) => {
           const I = PILLAR_ICONS[p.icon];
           return (
-            <div className="pillar" key={p.title}>
+            <div className="pillar reveal" style={{ '--d': `${PILLARS.indexOf(p) * 90}ms` }} key={p.title}>
               <I size={28} aria-hidden="true" />
               <div>
                 <h3>{p.title}</h3>
@@ -244,8 +286,8 @@ function About() {
   return (
     <section id="nosotros" className="section">
       <div className="container about">
-        <div className="about__img reveal">
-          <img src={img('proyecto-rack')} alt="Técnico organizando un rack de comunicaciones" loading="lazy" />
+        <div className="about__img reveal reveal--img">
+          <img data-parallax="0.08" src={img('proyecto-rack')} alt="Técnico organizando un rack de comunicaciones" loading="lazy" />
         </div>
         <div className="about__copy reveal">
           <p className="kicker">Nosotros</p>
@@ -449,14 +491,14 @@ function Footer() {
 }
 
 export default function App() {
-  const { scrolled, active } = useScrollEffects();
+  const { scrolled, hidden, active } = useScrollEffects();
   const [purpose, setPurpose] = useState('');
 
   return (
     <>
       <a className="skip" href="#servicios">Ir al contenido</a>
       <TopBar />
-      <Header scrolled={scrolled} active={active} />
+      <Header scrolled={scrolled} hidden={hidden} active={active} />
       <main>
         <Hero />
         <Pillars />
@@ -473,6 +515,7 @@ export default function App() {
       <a className="wa-float" href={waLink()} target="_blank" rel="noreferrer" aria-label="Escríbenos por WhatsApp">
         <WhatsAppGlyph width={26} height={26} />
       </a>
+      <a className={`to-top ${scrolled ? 'is-on' : ''}`} href="#inicio" aria-label="Volver arriba"><ArrowUp size={20} /></a>
     </>
   );
 }

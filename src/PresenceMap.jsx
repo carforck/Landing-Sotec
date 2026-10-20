@@ -1,8 +1,15 @@
 import { useMemo, useState } from 'react';
 import { DEPARTMENTS, MAP_H, MAP_W, project } from './colombia.js';
 import { PRESENCE, PRESENCE_TYPES } from './data.js';
+import { useCountUp, useInView } from './fx.js';
+
+function Stat({ value, label, start }) {
+  const n = useCountUp(value, start);
+  return <div><strong>{n}</strong><span>{label}</span></div>;
+}
 
 export default function PresenceMap() {
+  const [ref, inView] = useInView(0.3);
   const [filter, setFilter] = useState(null);
   const [active, setActive] = useState(null);
   const [hoverDept, setHoverDept] = useState(null);
@@ -19,16 +26,16 @@ export default function PresenceMap() {
 
   return (
     <section id="presencia" className="section">
-      <div className="container presence">
+      <div className={`container presence ${inView ? 'is-live' : ''}`} ref={ref}>
         <div className="presence__copy reveal">
           <p className="kicker">Cobertura</p>
           <h2>Presencia en Colombia</h2>
           <p>Desde nuestra sede en la región Caribe atendemos proyectos en distintas ciudades del país.</p>
 
           <div className="pstats">
-            <div><strong>{PRESENCE.length}</strong><span>ciudades atendidas</span></div>
-            <div><strong>{depts.size}</strong><span>departamentos</span></div>
-            <div><strong>{counts.proyectos || 0}</strong><span>ciudades con proyectos</span></div>
+            <Stat value={PRESENCE.length} label="ciudades atendidas" start={inView} />
+            <Stat value={depts.size} label="departamentos" start={inView} />
+            <Stat value={counts.proyectos || 0} label="ciudades con proyectos" start={inView} />
           </div>
 
           <div className="legend" role="group" aria-label="Filtrar por tipo de presencia">
@@ -80,7 +87,10 @@ export default function PresenceMap() {
                   onMouseEnter={() => setActive(i)}
                   onMouseLeave={() => setActive(null)}
                 >
-                  <circle r={p.type === 'sede' ? 8 : 6} />
+                  <g className="pin__pop" style={{ '--i': i }}>
+                    {p.type === 'sede' && <circle className="pin__ring" r="8" />}
+                    <circle className="pin__dot" r={p.type === 'sede' ? 8 : 6} />
+                  </g>
                 </g>
               ))}
             </g>

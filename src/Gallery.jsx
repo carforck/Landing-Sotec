@@ -49,9 +49,9 @@ export default function Gallery() {
           ))}
         </div>
 
-        <div className="gallery">
+        <div className="gallery" key={cat}>
           {visible.map((g, i) => (
-            <button key={g.src} className="gitem" onClick={() => setOpen(i)} aria-label={`Ampliar: ${g.title}`}>
+            <button key={g.src} className="gitem" style={{ '--i': i % INITIAL }} onClick={() => setOpen(i)} aria-label={`Ampliar: ${g.title}`}>
               <img src={img(g.src)} alt={g.title} loading="lazy" />
               <span className="gitem__cap"><small>{g.cat}</small>{g.title}</span>
             </button>
