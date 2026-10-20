@@ -4,7 +4,7 @@ import {
   Plus, RadioTower, ShieldCheck, Sun, X,
 } from 'lucide-react';
 import {
-  ABOUT, CONTACT, FAQ, HERO_SLIDES, NAV, PILLARS, SEGMENTS, SERVICES, STEPS, img, waLink,
+  ABOUT, CLIENTS, CONTACT, FAQ, HERO_SLIDES, NAV, PILLARS, SEGMENTS, SERVICES, STEPS, img, waLink,
 } from './data.js';
 import { reduced } from './fx.js';
 import Gallery from './Gallery.jsx';
@@ -215,6 +215,30 @@ function Pillars() {
             </div>
           );
         })}
+      </div>
+    </section>
+  );
+}
+
+/* ---------- Clientes ---------- */
+
+function Clients() {
+  const placeholders = import.meta.env.DEV && !CLIENTS.length;
+  const list = placeholders ? Array.from({ length: 8 }, (_, i) => ({ name: `Logo cliente ${i + 1}` })) : CLIENTS;
+  if (!list.length) return null;
+  // La lista se duplica para que el desplazamiento sea continuo.
+  const row = [...list, ...list];
+  return (
+    <section className="clients" aria-label="Clientes">
+      <p className="clients__label">Empresas y comunidades que confían en SOTEC</p>
+      <div className="clients__viewport">
+        <ul className="clients__track" style={{ '--n': list.length }}>
+          {row.map((c, i) => (
+            <li key={i} className={`client ${placeholders ? 'client--placeholder' : ''}`} aria-hidden={i >= list.length}>
+              {c.logo ? <img src={`${import.meta.env.BASE_URL}img/${c.logo}`} alt={c.name} loading="lazy" /> : <span>{c.name}</span>}
+            </li>
+          ))}
+        </ul>
       </div>
     </section>
   );
@@ -539,6 +563,7 @@ export default function App() {
       <main>
         <Hero />
         <Pillars />
+        <Clients />
         <Services onQuote={setPurpose} />
         <Segments />
         <About />

@@ -208,7 +208,7 @@ p { margin: 0 0 1em; }
 .pstats { display: grid; grid-template-columns: repeat(3, 1fr); margin: 28px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .pstats div { padding: 18px 0; }
 .pstats div + div { padding-left: 20px; border-left: 1px solid var(--line); }
-.pstats strong { display: block; font-size: 2rem; font-weight: 700; color: var(--ink); line-height: 1.1; }
+.pstats strong { font-variant-numeric: tabular-nums; display: block; font-size: 2rem; font-weight: 700; color: var(--ink); line-height: 1.1; }
 .pstats span { font-size: 0.85rem; color: var(--muted); }
 .legend { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
 .legend button { display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px; border: 1px solid var(--line); border-radius: var(--radius); background: #fff; font-size: 0.85rem; color: var(--text); }
@@ -227,19 +227,34 @@ p { margin: 0 0 1em; }
 .pmap { position: relative; max-width: 520px; width: 100%; justify-self: center; }
 .pmap svg { width: 100%; height: auto; overflow: visible; }
 .pmap__depts path { fill: #eef0ee; stroke: #fff; stroke-width: 1.2; transition: fill 0.2s; }
-.pmap__depts path.has { fill: #eef0ee; transition: fill 0.8s ease 0.2s; }
+.pmap__depts path.has { fill: #eef0ee; transition: fill 0.6s ease calc(0.2s + var(--i) * 0.03s); }
 .is-live .pmap__depts path.has { fill: #cfe6c4; }
+.is-live .pmap__depts path.has.is-off { fill: #e4ece0; transition-delay: 0s; }
 .pmap__depts path.is-hover { fill: #b6d9a6; }
 .pin circle { stroke: #fff; stroke-width: 2.5; transition: r 0.2s; cursor: pointer; }
 .pin__pop { transform-box: fill-box; transform-origin: center; transform: scale(0); }
 .is-live .pin__pop { animation: pinPop 0.5s var(--ease) both; animation-delay: calc(0.4s + var(--i) * 0.08s); }
-.pin .pin__ring { fill: none; stroke: var(--ink); stroke-width: 1.5; transform-box: fill-box; transform-origin: center; animation: ring 2.6s ease-out infinite; }
+.pin .pin__ring { fill: none; stroke: var(--green); stroke-width: 1.5; transform-box: fill-box; transform-origin: center; opacity: 0; animation: ring 2.8s ease-out infinite; animation-delay: calc(var(--i) * 0.25s); }
+.pin--sede .pin__ring { stroke: var(--ink); }
+.pin.is-active .pin__ring { animation-duration: 1.4s; }
+.pmap__arcs .arc { fill: none; stroke: var(--green); stroke-width: 1.4; stroke-linecap: round; opacity: 0.45; stroke-dasharray: 1; stroke-dashoffset: 1; transition: opacity 0.3s, stroke-width 0.3s; }
+.is-live .pmap__arcs .arc:not(.arc--flow) { animation: draw 1.2s var(--ease) both; animation-delay: calc(0.5s + var(--i) * 0.1s); }
+.pmap__arcs .arc--flow { stroke-dasharray: 4 10; stroke-dashoffset: 0; opacity: 0; }
+.is-live .pmap__arcs .arc--flow { animation: flow 1.6s linear infinite, flowIn 0.6s ease both; animation-delay: 0s, calc(1.6s + var(--i) * 0.1s); opacity: 0.5; }
+.pmap__arcs g.is-active .arc { opacity: 1; stroke-width: 2.2; }
+.pmap__arcs g.is-dim { opacity: 0.08; }
+.pmap__arcs g { transition: opacity 0.3s; }
+.packet { fill: var(--green); stroke: #fff; stroke-width: 1.2; }
 .pin--sede .pin__dot { fill: var(--ink); }
 .pin--proyectos .pin__dot { fill: var(--green); }
 .pin--cobertura .pin__dot { fill: #fff; stroke: var(--green); stroke-width: 2.5; }
 .pin.is-active .pin__dot { r: 10; }
 .pin.is-dim { opacity: 0.2; }
-.pmap__tip { animation: fadeIn 0.2s ease; position: absolute; top: 0; left: 0; display: flex; flex-direction: column; max-width: 260px; padding: 12px 14px; background: #fff; border: 1px solid var(--line); border-radius: var(--radius); box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08); font-size: 0.85rem; pointer-events: none; }
+.pmap__tip { animation: fadeIn 0.2s ease; position: absolute; z-index: 2; top: 0; left: 0; display: flex; flex-direction: column; max-width: 260px; padding: 12px 14px; background: #fff; border: 1px solid var(--line); border-radius: var(--radius); box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08); font-size: 0.85rem; pointer-events: none; }
+.pmap__tip--pin { width: 250px; max-width: none; transform: translate(-50%, calc(-100% - 16px)); animation: tipIn 0.35s var(--ease) both; }
+.pmap__tip--pin::after { content: ''; position: absolute; left: calc(50% + var(--ax, 0px)); bottom: -6px; width: 10px; height: 10px; background: #fff; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); transform: translateX(-50%) rotate(45deg); }
+.pmap__tip--pin.is-below { transform: translate(-50%, 16px); animation-name: tipInBelow; }
+.pmap__tip--pin.is-below::after { bottom: auto; top: -6px; border: 0; border-left: 1px solid var(--line); border-top: 1px solid var(--line); }
 .pmap__tip small { font-size: 0.7rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--green-700); }
 .pmap__tip strong { color: var(--ink); font-size: 1rem; }
 .pmap__tip span { color: var(--muted); }
@@ -321,13 +336,19 @@ body.menu-open .wa-float, body.menu-open .to-top { opacity: 0; pointer-events: n
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes zoomIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: none; } }
 @keyframes pinPop { 0% { transform: scale(0); } 70% { transform: scale(1.2); } 100% { transform: scale(1); } }
-@keyframes ring { 0% { transform: scale(1); opacity: 0.7; } 100% { transform: scale(2.6); opacity: 0; } }
+@keyframes ring { 0% { transform: scale(1); opacity: 0.7; } 100% { transform: scale(2.8); opacity: 0; } }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+@keyframes tipInBelow { from { opacity: 0; transform: translate(-50%, 6px); } to { opacity: 1; transform: translate(-50%, 16px); } }
+@keyframes flow { to { stroke-dashoffset: -28; } }
+@keyframes flowIn { from { opacity: 0; } to { opacity: 0.55; } }
+@keyframes tipIn { from { opacity: 0; transform: translate(-50%, calc(-100% - 6px)); } to { opacity: 1; transform: translate(-50%, calc(-100% - 16px)); } }
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
   .reveal { opacity: 1; transform: none; }
   .reveal--img::after { display: none; }
+  .clients__viewport { overflow-x: auto; }
 }
 
 
@@ -403,6 +424,22 @@ h3 { letter-spacing: -0.01em; font-weight: 700; }
 .cta p { margin: 0; color: rgba(255, 255, 255, 0.72); }
 .cta__actions { display: flex; flex-wrap: wrap; gap: 12px; flex: none; }
 
+
+/* Franja de clientes con desplazamiento horizontal continuo */
+.clients { padding: 40px 0 8px; }
+.clients__label { margin: 0 0 20px; text-align: center; font-size: 0.85rem; font-weight: 500; color: var(--muted); }
+.clients__viewport { overflow: hidden; mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent); -webkit-mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent); }
+.clients__track { --gap: 56px; display: flex; align-items: center; gap: var(--gap); width: max-content; margin: 0; padding: 8px 0; list-style: none; animation: clientsScroll calc(var(--n) * 4.5s) linear infinite; }
+.clients__viewport:hover .clients__track { animation-play-state: paused; }
+.client { flex: none; display: grid; place-items: center; height: 56px; min-width: 120px; }
+.client img { max-height: 48px; max-width: 160px; width: auto; filter: grayscale(1); opacity: 0.6; transition: filter 0.3s, opacity 0.3s; }
+.client:hover img { filter: none; opacity: 1; }
+.client span { font-family: var(--display); font-size: 1.1rem; font-weight: 700; letter-spacing: -0.01em; color: #9aa29d; white-space: nowrap; transition: color 0.3s; }
+.client:hover span { color: var(--ink); }
+.client--placeholder { width: 160px; border: 1.5px dashed #cfd5d1; border-radius: 12px; }
+.client--placeholder span { font-family: var(--font); font-size: 0.8rem; font-weight: 500; color: #9aa29d; }
+@keyframes clientsScroll { to { transform: translateX(calc(-50% - var(--gap) / 2)); } }
+
 /* Tablet */
 @media (max-width: 1080px) {
   .nav {
@@ -467,6 +504,8 @@ h3 { letter-spacing: -0.01em; font-weight: 700; }
   .lightbox__nav--prev { left: 20px; }
   .lightbox__nav--next { right: 20px; }
   .wa-float { right: 14px; bottom: 14px; width: 50px; height: 50px; }
+  .clients__track { --gap: 36px; }
+  .client img { max-height: 38px; max-width: 120px; }
   .to-top { right: 18px; bottom: 74px; }
   .hero__slides button { width: 40px; }
 }

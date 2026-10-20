@@ -222,3 +222,8 @@ export const PRESENCE = [
   { city: 'Bucaramanga', dept: 'Santander', lat: 7.119, lon: -73.123, type: 'cobertura', text: 'Telecomunicaciones y automatización.' },
   { city: 'Cali', dept: 'Valle del Cauca', lat: 3.451, lon: -76.532, type: 'cobertura', text: 'Seguridad electrónica empresarial.' },
 ];
+
+// VALIDAR: clientes reales de SOTEC. Cada uno con su nombre y, si hay, su logo en public/img/clientes/
+// (por ejemplo { name: 'Empresa X', logo: 'clientes/empresa-x.webp' }). Sin logo se muestra el nombre.
+// Mientras la lista esté vacía, la franja no aparece en el sitio publicado (solo en desarrollo con recuadros de ejemplo).
+export const CLIENTS = [];
