@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  ArrowRight, ArrowUp, BadgeDollarSign, Check, Facebook, Headset, Instagram, Mail, MapPin, Menu, Minus, Phone, Plus,
-  ShieldCheck, X,
+  ArrowRight, ArrowUp, BadgeDollarSign, Check, Cpu, Facebook, Headset, Instagram, Mail, MapPin, Menu, Minus, Phone,
+  Plus, RadioTower, ShieldCheck, Sun, X,
 } from 'lucide-react';
 import {
   ABOUT, CONTACT, FAQ, HERO_SLIDES, NAV, PILLARS, SEGMENTS, SERVICES, STEPS, img, waLink,
@@ -11,6 +11,7 @@ import Gallery from './Gallery.jsx';
 import PresenceMap from './PresenceMap.jsx';
 
 const PILLAR_ICONS = { ShieldCheck, Headset, BadgeDollarSign };
+const SERVICE_ICONS = { ShieldCheck, RadioTower, Sun, Cpu };
 
 const WhatsAppGlyph = (props) => (
   <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" {...props}>
@@ -158,6 +159,7 @@ function Hero() {
 
   return (
     <section id="inicio" className="hero">
+      <div className="hero__frame">
       <div className="hero__bg" aria-hidden="true" data-parallax="-0.25">
         {HERO_SLIDES.map((s, i) => (
           <img key={s} src={img(s)} alt="" className={i === slide ? 'is-on' : ''} />
@@ -175,12 +177,23 @@ function Hero() {
           <a href="#servicios" className="btn btn--light btn--lg">Conocer servicios</a>
         </div>
       </div>
-      <div className="container hero__slides" role="group" aria-label="Imágenes de portada">
-        {HERO_SLIDES.map((s, i) => (
-          <button key={s} className={i === slide ? 'is-on' : ''} onClick={() => setSlide(i)} aria-label={`Imagen ${i + 1} de ${HERO_SLIDES.length}`}>
-            <span key={i === slide ? `on-${slide}` : 'off'} />
-          </button>
-        ))}
+      <div className="container hero__bottom">
+        <nav className="hero__chips" aria-label="Servicios">
+          {SERVICES.map((sv) => {
+            const I = SERVICE_ICONS[sv.icon];
+            return (
+              <a key={sv.key} href="#servicios"><I size={18} aria-hidden="true" /> {sv.title}</a>
+            );
+          })}
+        </nav>
+        <div className="hero__slides" role="group" aria-label="Imágenes de portada">
+          {HERO_SLIDES.map((sl, i) => (
+            <button key={sl} className={i === slide ? 'is-on' : ''} onClick={() => setSlide(i)} aria-label={`Imagen ${i + 1} de ${HERO_SLIDES.length}`}>
+              <span key={i === slide ? `on-${slide}` : 'off'} />
+            </button>
+          ))}
+        </div>
+      </div>
       </div>
     </section>
   );
@@ -194,7 +207,7 @@ function Pillars() {
           const I = PILLAR_ICONS[p.icon];
           return (
             <div className="pillar reveal" style={{ '--d': `${PILLARS.indexOf(p) * 90}ms` }} key={p.title}>
-              <I size={28} aria-hidden="true" />
+              <span className="pillar__icon"><I size={22} aria-hidden="true" /></span>
               <div>
                 <h3>{p.title}</h3>
                 <p>{p.text}</p>
@@ -222,9 +235,10 @@ function Services({ onQuote }) {
         </div>
         <div className="services">
           {SERVICES.map((s, i) => (
-            <article className="service reveal" style={{ '--d': `${i * 60}ms` }} key={s.key}>
+            <article className={`service service--${i} reveal`} style={{ '--d': `${i * 60}ms` }} key={s.key}>
               <div className="service__img">
                 <img src={img(s.img)} alt={s.title} loading="lazy" />
+                <span className="service__badge">{(() => { const I = SERVICE_ICONS[s.icon]; return <I size={20} aria-hidden="true" />; })()}</span>
               </div>
               <div className="service__body">
                 <h3>{s.title}</h3>
@@ -371,6 +385,29 @@ function Faq() {
   );
 }
 
+/* ---------- Llamado a la acción ---------- */
+
+function CtaBand() {
+  return (
+    <section className="cta-wrap" aria-label="Solicitar asesoría">
+      <div className="container">
+        <div className="cta reveal">
+          <div>
+            <h2>¿Listo para proteger y conectar tu hogar o empresa?</h2>
+            <p>Agenda una visita técnica sin compromiso y recibe una propuesta a la medida.</p>
+          </div>
+          <div className="cta__actions">
+            <a href="#contacto" className="btn btn--primary btn--lg">Solicitar cotización</a>
+            <a href={waLink()} target="_blank" rel="noreferrer" className="btn btn--light btn--lg">
+              <WhatsAppGlyph width={18} height={18} /> WhatsApp
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 /* ---------- Contacto ---------- */
 
 function Contact({ purpose, setPurpose }) {
@@ -509,6 +546,7 @@ export default function App() {
         <PresenceMap />
         <Process />
         <Faq />
+        <CtaBand />
         <Contact purpose={purpose} setPurpose={setPurpose} />
       </main>
       <Footer />
