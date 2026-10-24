@@ -14,8 +14,8 @@ export const CONTACT = {
 export const waLink = (text = 'Hola, quiero información sobre los servicios de SOTEC.') =>
   `https://wa.me/${CONTACT.whatsapp}?text=${encodeURIComponent(text)}`;
 
-// Aplicativo FormatoDigital (formatos digitalizados de SOTEC).
-export const APP_URL = 'https://formato-digital-nine.vercel.app';
+// Aplicativo ControlOne de SOTEC.
+export const APP_URL = 'https://controlone.sotecse.com';
 
 export const NAV = [
   { id: 'inicio', label: 'Inicio' },
