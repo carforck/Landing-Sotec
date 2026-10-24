@@ -87,7 +87,9 @@ p { margin: 0 0 1em; }
 .nav a:not(.btn) { position: relative; padding: 8px 14px; font-size: 0.93rem; font-weight: 500; color: var(--ink); }
 .nav a:not(.btn)::after { content: ''; position: absolute; left: 14px; right: 14px; bottom: -2px; height: 2px; background: var(--green); transform: scaleX(0); transition: transform 0.25s var(--ease); }
 .nav a:not(.btn):hover::after, .nav a.is-active::after { transform: scaleX(1); }
-.nav__cta { margin-left: 12px; }
+.nav__app { margin-left: 12px; padding: 11px 16px; }
+.nav .btn { white-space: nowrap; }
+.nav__cta { margin-left: 8px; }
 .burger { display: none; margin-left: auto; background: none; border: 0; color: var(--ink); padding: 8px; }
 
 /* Portada */
@@ -505,6 +507,13 @@ body.is-intro .hero__inner > *, body.is-intro .hero__bottom { animation-play-sta
 .pmap { grid-area: map; align-self: center; }
 .pcities { grid-area: list; }
 
+/* Escritorio estrecho: el botón del aplicativo se acorta para que quepa el menú */
+@media (min-width: 1081px) and (max-width: 1480px) {
+  .nav__app-long { display: none; }
+  .nav a:not(.btn) { padding: 8px 11px; }
+  .nav__app span { text-transform: capitalize; }
+}
+
 /* Tablet */
 @media (max-width: 1080px) {
   .nav {
@@ -516,7 +525,8 @@ body.is-intro .hero__inner > *, body.is-intro .hero__bottom { animation-play-sta
   .nav a:not(.btn) { padding: 14px 0; font-size: 1.05rem; border-bottom: 1px solid var(--line); }
   .nav a:not(.btn)::after { display: none; }
   .nav a.is-active { color: var(--green-700); }
-  .nav__cta { margin: 20px 0 0; }
+  .nav__app { margin: 20px 0 0; }
+  .nav__cta { margin: 10px 0 0; }
   .burger { display: inline-flex; }
   .services { grid-template-columns: 1fr; }
   .hero__bottom { flex-direction: column; align-items: flex-start; }

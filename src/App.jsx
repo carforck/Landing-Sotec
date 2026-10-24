@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  ArrowRight, ArrowUp, BadgeDollarSign, Check, Cpu, Facebook, Headset, Instagram, Mail, MapPin, Menu, Minus, Pause, Phone,
+  ArrowRight, ArrowUp, BadgeDollarSign, Check, Cpu, Facebook, Headset, Instagram, LogIn, Mail, MapPin, Menu, Minus, Pause, Phone,
   Play, Plus, RadioTower, ShieldCheck, Sun, X,
 } from 'lucide-react';
 import {
-  ABOUT, CLIENTS, CONTACT, FAQ, HERO_SLIDES, NAV, PILLARS, SEGMENTS, SERVICES, STEPS, img, waLink,
+  ABOUT, APP_URL, CLIENTS, CONTACT, FAQ, HERO_SLIDES, NAV, PILLARS, SEGMENTS, SERVICES, STEPS, img, waLink,
 } from './data.js';
 import { reduced, useFocusTrap, useInView, useSnapIndex } from './fx.js';
 import ScannerEye from './ScannerEye.jsx';
@@ -180,6 +180,9 @@ function Header({ scrolled, hidden, active }) {
               {n.label}
             </a>
           ))}
+          <a href={APP_URL} target="_blank" rel="noreferrer" className="btn btn--outline nav__app" onClick={() => setOpen(false)}>
+            <LogIn size={18} aria-hidden="true" /> <span><span className="nav__app-long">Acceder al </span>aplicativo</span>
+          </a>
           <a href="#contacto" className="btn btn--primary nav__cta" onClick={() => setOpen(false)}>
             Solicitar cotización
           </a>
