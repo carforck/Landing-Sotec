@@ -45,6 +45,7 @@ create table if not exists public.categorias (
   id text primary key check (char_length(id) between 3 and 60),
   nombre text not null check (char_length(nombre) between 2 and 80),
   imagen text not null default '',
+  icono text not null default 'paquete' check (icono ~ '^[a-z]{2,20}$'),
   orden int not null default 0,
   activa boolean not null default true,
   creado timestamptz not null default now()
@@ -59,6 +60,7 @@ create table if not exists public.productos (
   precio numeric(14, 0) check (precio is null or precio >= 0),
   imagenes text[] not null default '{}' check (cardinality(imagenes) <= 6),
   destacado boolean not null default false,
+  nuevo boolean not null default false,
   activo boolean not null default true,
   orden int not null default 0,
   creado timestamptz not null default now(),
@@ -80,6 +82,24 @@ create or replace function public.tocar_actualizado()
 returns trigger language plpgsql as $$ begin new.actualizado = now(); return new; end $$;
 drop trigger if exists productos_actualizado on public.productos;
 create trigger productos_actualizado before update on public.productos for each row execute function public.tocar_actualizado();
+
+-- ─── Banners del carrusel principal ────────────────────────────────────────
+create table if not exists public.banners (
+  id text primary key check (char_length(id) between 3 and 60),
+  titulo text not null default '' check (char_length(titulo) <= 120),
+  texto text not null default '' check (char_length(texto) <= 240),
+  imagen text not null check (char_length(imagen) between 1 and 2000),
+  imagen_movil text not null default '' check (char_length(imagen_movil) <= 2000),
+  boton_texto text not null default '' check (char_length(boton_texto) <= 40),
+  -- Solo destinos internos de la tienda (evita enlaces a sitios externos)
+  enlace text not null default '' check (enlace = '' or enlace ~ '^/[A-Za-z0-9/?=&_.#-]*$'),
+  orden int not null default 0,
+  activo boolean not null default true,
+  creado timestamptz not null default now()
+);
+alter table public.banners enable row level security;
+create policy banners_publico on public.banners for select to anon, authenticated using (activo or public.es_admin());
+create policy banners_admin on public.banners for all to authenticated using (public.es_admin()) with check (public.es_admin());
 
 -- ─── Configuración pública (una fila) ──────────────────────────────────────
 create table if not exists public.configuracion (

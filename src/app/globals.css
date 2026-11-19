@@ -45,10 +45,27 @@ h1, h2, h3 {
     @apply mb-1 block text-sm font-semibold text-tinta;
   }
   .tarjeta {
-    @apply rounded-2xl border border-linea bg-white;
+    @apply rounded-2xl border border-linea bg-white shadow-[0_1px_2px_rgba(22,28,24,0.04)];
   }
+  /* Gutter 16 px móvil · 24 px tablet · 32 px escritorio */
   .contenedor {
-    @apply mx-auto w-full max-w-6xl px-4 sm:px-6;
+    @apply mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8;
+  }
+  /* Ritmo vertical de las bandas de la portada */
+  .seccion {
+    @apply py-10 sm:py-14 lg:py-20;
+  }
+  .seccion-compacta {
+    @apply py-6 sm:py-8 lg:py-10;
+  }
+  .titulo-seccion {
+    @apply font-titulo font-bold text-tinta;
+    font-size: clamp(1.25rem, 1rem + 1vw, 1.75rem);
+    line-height: 1.2;
+  }
+  .titulo-hero {
+    font-size: clamp(1.5rem, 1.1rem + 2vw, 2.5rem);
+    line-height: 1.1;
   }
 }
 

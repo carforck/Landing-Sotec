@@ -5,6 +5,7 @@ import { Plus, Save, Trash2 } from "lucide-react";
 
 import { useTienda } from "@/components/Proveedor";
 import { ErrorDatos, nuevoId } from "@/lib/datos";
+import { ICONOS, iconoDe } from "@/lib/iconos";
 import type { Categoria } from "@/lib/tipos";
 
 export default function Categorias() {
@@ -43,7 +44,7 @@ export default function Categorias() {
           const nombre = nueva.trim();
           if (nombre.length < 3 || !repo) return;
           void hacer(async () => {
-            await repo.guardarCategoria({ id: nuevoId("cat"), nombre, imagen: "", orden: cats.reduce((m, c) => Math.max(m, c.orden), 0) + 1, activa: true });
+            await repo.guardarCategoria({ id: nuevoId("cat"), nombre, imagen: "", icono: "paquete", orden: cats.reduce((m, c) => Math.max(m, c.orden), 0) + 1, activa: true });
             setNueva("");
           }, `Categoría «${nombre}» creada.`);
         }}
@@ -54,8 +55,19 @@ export default function Categorias() {
       </form>
       {msg && <p role="status" className="text-sm">{msg}</p>}
       <ul className="space-y-2">
-        {cats.map((c) => (
-          <li key={c.id} className="tarjeta flex flex-wrap items-center gap-2 p-3">
+        {cats.map((c) => {
+          const Icono = iconoDe(c.icono);
+          return (
+          <li key={c.id} className="tarjeta flex flex-wrap items-center gap-2 p-3" data-admin-categoria={c.id}>
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-marca-suave text-marca-oscuro" aria-hidden>
+              <Icono className="h-5 w-5" />
+            </span>
+            <label className="sr-only" htmlFor={`i-${c.id}`}>Ícono</label>
+            <select id={`i-${c.id}`} className="campo w-auto" value={c.icono} onChange={(e) => editar(c.id, { icono: e.target.value })} data-icono>
+              {ICONOS.map((i) => (
+                <option key={i.clave} value={i.clave}>{i.nombre}</option>
+              ))}
+            </select>
             <label className="sr-only" htmlFor={`n-${c.id}`}>Nombre</label>
             <input id={`n-${c.id}`} className="campo min-w-[12rem] flex-1" value={c.nombre} onChange={(e) => editar(c.id, { nombre: e.target.value })} />
             <label className="sr-only" htmlFor={`o-${c.id}`}>Orden</label>
@@ -70,7 +82,8 @@ export default function Categorias() {
               <Trash2 className="h-4 w-4" aria-hidden />
             </button>
           </li>
-        ))}
+          );
+        })}
       </ul>
     </>
   );

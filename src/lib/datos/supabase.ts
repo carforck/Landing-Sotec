@@ -7,7 +7,7 @@
 import { createBrowserClient } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { CONFIG_INICIAL, type Categoria, type Configuracion, type EstadoPedido, type ItemCarrito, type Pedido, type Producto } from "../tipos";
+import { CONFIG_INICIAL, type Banner, type Categoria, type Configuracion, type EstadoPedido, type ItemCarrito, type Pedido, type Producto } from "../tipos";
 import { ErrorDatos, nuevoId, type Repositorio, type Sesion } from "./repositorio";
 
 export const BUCKET_IMAGENES = "productos";
@@ -18,10 +18,34 @@ const aCategoria = (f: Fila): Categoria => ({
   id: String(f.id),
   nombre: String(f.nombre),
   imagen: String(f.imagen ?? ""),
+  icono: String(f.icono ?? "paquete"),
   orden: Number(f.orden ?? 0),
   activa: Boolean(f.activa),
 });
-const deCategoria = (c: Categoria) => ({ id: c.id, nombre: c.nombre, imagen: c.imagen, orden: c.orden, activa: c.activa });
+const deCategoria = (c: Categoria) => ({ id: c.id, nombre: c.nombre, imagen: c.imagen, icono: c.icono, orden: c.orden, activa: c.activa });
+
+const aBanner = (f: Fila): Banner => ({
+  id: String(f.id),
+  titulo: String(f.titulo ?? ""),
+  texto: String(f.texto ?? ""),
+  imagen: String(f.imagen ?? ""),
+  imagenMovil: String(f.imagen_movil ?? ""),
+  botonTexto: String(f.boton_texto ?? ""),
+  enlace: String(f.enlace ?? ""),
+  orden: Number(f.orden ?? 0),
+  activo: Boolean(f.activo),
+});
+const deBanner = (b: Banner) => ({
+  id: b.id,
+  titulo: b.titulo,
+  texto: b.texto,
+  imagen: b.imagen,
+  imagen_movil: b.imagenMovil,
+  boton_texto: b.botonTexto,
+  enlace: b.enlace,
+  orden: b.orden,
+  activo: b.activo,
+});
 
 const aProducto = (f: Fila): Producto => ({
   id: String(f.id),
@@ -32,6 +56,7 @@ const aProducto = (f: Fila): Producto => ({
   precio: f.precio == null ? null : Number(f.precio),
   imagenes: Array.isArray(f.imagenes) ? (f.imagenes as string[]) : [],
   destacado: Boolean(f.destacado),
+  nuevo: Boolean(f.nuevo),
   activo: Boolean(f.activo),
   orden: Number(f.orden ?? 0),
   creado: String(f.creado ?? ""),
@@ -45,6 +70,7 @@ const deProducto = (p: Producto) => ({
   precio: p.precio,
   imagenes: p.imagenes,
   destacado: p.destacado,
+  nuevo: p.nuevo,
   activo: p.activo,
   orden: p.orden,
 });
@@ -106,6 +132,14 @@ export function crearRepoSupabase(url: string, anonKey: string): Repositorio {
       return data ? { whatsapp: String(data.whatsapp), mensajeInicial: String(data.mensaje_inicial) } : CONFIG_INICIAL;
     },
 
+    async banners(opts) {
+      let q = sb.from("banners").select("*").order("orden");
+      if (!opts?.todos) q = q.eq("activo", true);
+      const { data, error } = await q;
+      falla(error, "No se pudieron cargar los banners");
+      return (data ?? []).map(aBanner);
+    },
+
     async crearPedido({ cliente, items }) {
       const { data, error } = await sb.rpc("crear_pedido", {
         p_cliente: cliente,
@@ -147,6 +181,15 @@ export function crearRepoSupabase(url: string, anonKey: string): Repositorio {
     async eliminarCategoria(id) {
       const { error } = await sb.from("categorias").delete().eq("id", id);
       falla(error, "No se pudo eliminar la categoría (¿tiene productos?)");
+    },
+    async guardarBanner(b) {
+      const { error } = await sb.from("banners").upsert(deBanner(b));
+      falla(error, "No se pudo guardar el banner");
+      return b;
+    },
+    async eliminarBanner(id) {
+      const { error } = await sb.from("banners").delete().eq("id", id);
+      falla(error, "No se pudo eliminar el banner");
     },
     async pedidos() {
       const { data, error } = await sb.from("pedidos").select("*").order("creado", { ascending: false }).limit(500);

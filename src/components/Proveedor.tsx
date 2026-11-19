@@ -5,7 +5,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 
 import * as C from "@/lib/carrito";
 import { obtenerRepo, type Repositorio } from "@/lib/datos";
-import { CONFIG_INICIAL, type Categoria, type Configuracion, type ItemCarrito, type Producto } from "@/lib/tipos";
+import { CONFIG_INICIAL, type Banner, type Categoria, type Configuracion, type ItemCarrito, type Producto } from "@/lib/tipos";
 
 const CLAVE_CARRITO = "sotec-tienda-carrito";
 
@@ -15,6 +15,7 @@ interface Ctx {
   error: string | null;
   categorias: Categoria[];
   productos: Producto[];
+  banners: Banner[];
   config: Configuracion;
   recargar: () => Promise<void>;
   carrito: ItemCarrito[];
@@ -24,6 +25,10 @@ interface Ctx {
   vaciar: () => void;
   aviso: string | null;
   avisar: (t: string) => void;
+  /** Carrito lateral (drawer). */
+  carritoAbierto: boolean;
+  abrirCarrito: () => void;
+  cerrarCarrito: () => void;
 }
 
 const Contexto = createContext<Ctx | null>(null);
@@ -40,6 +45,8 @@ export function ProveedorTienda({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [productos, setProductos] = useState<Producto[]>([]);
+  const [banners, setBanners] = useState<Banner[]>([]);
+  const [carritoAbierto, setCarritoAbierto] = useState(false);
   const [config, setConfig] = useState<Configuracion>(CONFIG_INICIAL);
   const [carrito, setCarrito] = useState<ItemCarrito[]>([]);
   const [carritoLeido, setCarritoLeido] = useState(false);
@@ -49,8 +56,9 @@ export function ProveedorTienda({ children }: { children: ReactNode }) {
     const r = obtenerRepo();
     setRepo(r);
     try {
-      const [cs, ps, cfg] = await Promise.all([r.categorias(), r.productos(), r.configuracion()]);
+      const [cs, ps, cfg, bs] = await Promise.all([r.categorias(), r.productos(), r.configuracion(), r.banners()]);
       setCategorias(cs);
+      setBanners(bs);
       setProductos(ps);
       setConfig(cfg);
       setError(null);
@@ -94,6 +102,7 @@ export function ProveedorTienda({ children }: { children: ReactNode }) {
       error,
       categorias,
       productos,
+      banners,
       config,
       recargar,
       carrito,
@@ -106,8 +115,11 @@ export function ProveedorTienda({ children }: { children: ReactNode }) {
       vaciar: () => setCarrito([]),
       aviso,
       avisar: setAviso,
+      carritoAbierto,
+      abrirCarrito: () => setCarritoAbierto(true),
+      cerrarCarrito: () => setCarritoAbierto(false),
     }),
-    [repo, listo, error, categorias, productos, config, recargar, carrito, aviso],
+    [repo, listo, error, categorias, productos, banners, config, recargar, carrito, aviso, carritoAbierto],
   );
 
   return <Contexto.Provider value={valor}>{children}</Contexto.Provider>;

@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import { Aviso } from "./Aviso";
 import { BotonWhatsApp } from "./BotonWhatsApp";
+import { CarritoLateral } from "./CarritoLateral";
 import { Encabezado } from "./Encabezado";
 import { Pie } from "./Pie";
 
@@ -16,6 +17,7 @@ export function MarcoTienda({ children }: { children: ReactNode }) {
       <Pie />
       <BotonWhatsApp />
       <Aviso />
+      <CarritoLateral />
     </>
   );
 }

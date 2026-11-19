@@ -5,6 +5,8 @@ export interface Categoria {
   nombre: string;
   /** Imagen de portada de la categoría (ruta pública o URL). */
   imagen: string;
+  /** Nombre del ícono (ver @/lib/iconos). */
+  icono: string;
   orden: number;
   activa: boolean;
 }
@@ -21,10 +23,29 @@ export interface Producto {
   precio: number | null;
   /** Rutas públicas, URLs o data URLs (modo local). La primera es la principal. */
   imagenes: string[];
+  /** Etiqueta «Más vendido». */
   destacado: boolean;
+  /** Etiqueta «Nuevo». */
+  nuevo: boolean;
   activo: boolean;
   orden: number;
   creado: string;
+}
+
+/** Banner del carrusel principal (administrable). */
+export interface Banner {
+  id: string;
+  titulo: string;
+  texto: string;
+  /** Imagen de escritorio (horizontal). */
+  imagen: string;
+  /** Imagen para celular (opcional; si falta se usa la de escritorio). */
+  imagenMovil: string;
+  botonTexto: string;
+  /** Destino del botón dentro de la tienda: «/producto/<id>», «/?categoria=<id>» o «/carrito». */
+  enlace: string;
+  orden: number;
+  activo: boolean;
 }
 
 export interface ItemCarrito {

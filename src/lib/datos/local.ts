@@ -3,14 +3,15 @@
  * Lo que se agrega en el panel NO lo ven otros visitantes. Para producción: Supabase.
  */
 import { resumen, sincronizar } from "../carrito";
-import { CATEGORIAS_SEMILLA, PRODUCTOS_SEMILLA } from "../semilla";
-import { CONFIG_INICIAL, type Categoria, type Configuracion, type Pedido, type Producto } from "../tipos";
+import { BANNERS_SEMILLA, CATEGORIAS_SEMILLA, PRODUCTOS_SEMILLA } from "../semilla";
+import { CONFIG_INICIAL, type Banner, type Categoria, type Configuracion, type Pedido, type Producto } from "../tipos";
 import { ErrorDatos, codigoPedido, nuevoId, type NuevoPedido, type Repositorio, type Sesion } from "./repositorio";
 
 export const CLAVE_LOCAL = "sotec-tienda-v1";
 export const CLAVE_SESION = "sotec-tienda-admin";
 
 interface Estado {
+  banners: Banner[];
   categorias: Categoria[];
   productos: Producto[];
   pedidos: Pedido[];
@@ -30,6 +31,7 @@ export function almacenMemoria(): Almacen {
 }
 
 const inicial = (): Estado => ({
+  banners: structuredClone(BANNERS_SEMILLA),
   categorias: structuredClone(CATEGORIAS_SEMILLA),
   productos: structuredClone(PRODUCTOS_SEMILLA),
   pedidos: [],
@@ -44,9 +46,13 @@ export function crearRepoLocal(almacen: Almacen, sesionAlmacen: Almacen = almace
       const raw = almacen.getItem(CLAVE_LOCAL);
       if (!raw) return inicial();
       const e = JSON.parse(raw) as Partial<Estado>;
+      const base = inicial();
+      // Datos guardados por una versión anterior: completar campos nuevos
+      const iconoSemilla = new Map(base.categorias.map((c) => [c.id, c.icono]));
       return {
-        categorias: Array.isArray(e.categorias) ? e.categorias : inicial().categorias,
-        productos: Array.isArray(e.productos) ? e.productos : inicial().productos,
+        banners: Array.isArray(e.banners) ? e.banners : base.banners,
+        categorias: (Array.isArray(e.categorias) ? e.categorias : base.categorias).map((c) => ({ ...c, icono: c.icono ?? iconoSemilla.get(c.id) ?? "paquete" })),
+        productos: (Array.isArray(e.productos) ? e.productos : base.productos).map((p) => ({ ...p, nuevo: Boolean(p.nuevo) })),
         pedidos: Array.isArray(e.pedidos) ? e.pedidos : [],
         config: { ...CONFIG_INICIAL, ...(e.config ?? {}) },
       };
@@ -83,6 +89,10 @@ export function crearRepoLocal(almacen: Almacen, sesionAlmacen: Almacen = almace
     },
     async configuracion() {
       return leer().config;
+    },
+    async banners(opts) {
+      const bs = ordenar(leer().banners);
+      return opts?.todos ? bs : bs.filter((b) => b.activo);
     },
 
     async crearPedido({ cliente, items }: NuevoPedido) {
@@ -147,6 +157,21 @@ export function crearRepoLocal(almacen: Almacen, sesionAlmacen: Almacen = almace
       const e = leer();
       if (e.productos.some((p) => p.categoriaId === id)) throw new ErrorDatos("La categoría tiene productos: muévelos o desactívala.");
       e.categorias = e.categorias.filter((x) => x.id !== id);
+      escribir(e);
+    },
+    async guardarBanner(b) {
+      exigirAdmin();
+      const e = leer();
+      const i = e.banners.findIndex((x) => x.id === b.id);
+      if (i >= 0) e.banners[i] = b;
+      else e.banners.push(b);
+      escribir(e);
+      return b;
+    },
+    async eliminarBanner(id) {
+      exigirAdmin();
+      const e = leer();
+      e.banners = e.banners.filter((x) => x.id !== id);
       escribir(e);
     },
     async pedidos() {

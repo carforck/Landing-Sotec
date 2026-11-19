@@ -20,6 +20,7 @@ const vacio = (categoriaId: string, orden: number): Producto => ({
   precio: null,
   imagenes: [],
   destacado: false,
+  nuevo: false,
   activo: true,
   orden,
   creado: new Date().toISOString(),
@@ -131,7 +132,10 @@ function Editor() {
             <input type="checkbox" className="h-5 w-5 accent-marca-btn" checked={p.activo} onChange={(e) => cambiar({ activo: e.target.checked })} /> Visible en la tienda
           </label>
           <label className="flex min-h-[44px] items-center gap-2 font-semibold text-tinta">
-            <input type="checkbox" className="h-5 w-5 accent-marca-btn" checked={p.destacado} onChange={(e) => cambiar({ destacado: e.target.checked })} /> Destacado
+            <input type="checkbox" className="h-5 w-5 accent-marca-btn" checked={p.destacado} onChange={(e) => cambiar({ destacado: e.target.checked })} /> «Más vendido»
+          </label>
+          <label className="flex min-h-[44px] items-center gap-2 font-semibold text-tinta">
+            <input type="checkbox" className="h-5 w-5 accent-marca-btn" checked={p.nuevo} onChange={(e) => cambiar({ nuevo: e.target.checked })} /> «Nuevo»
           </label>
         </fieldset>
       </div>

@@ -9,7 +9,10 @@ import { urlImagen } from "../../src/lib/rutas";
 import { PRODUCTOS_SEMILLA } from "../../src/lib/semilla";
 import { CONFIG_INICIAL, type Producto } from "../../src/lib/tipos";
 import { esquemaCliente } from "../../src/lib/validacion";
-import { enlaceWhatsApp, mensajePedido, normalizarNumero } from "../../src/lib/whatsapp";
+import { enlaceWhatsApp, mensajePedido, mensajeProducto, normalizarNumero } from "../../src/lib/whatsapp";
+import { ICONOS, iconoDe } from "../../src/lib/iconos";
+import { BANNERS_SEMILLA, CATEGORIAS_SEMILLA } from "../../src/lib/semilla";
+import { Package, Sun } from "lucide-react";
 
 let casos = 0;
 const fallos: string[] = [];
@@ -97,6 +100,37 @@ const camara = PRODUCTOS_SEMILLA.find((p) => p.id === "prd-camara-domo")!;
     assert.equal(u.searchParams.get("text"), m);
   });
 
+  // ── Cotizar un solo producto
+  const mp = mensajeProducto(panel, 2, "https://sotecse.com/tienda/producto/prd-panel-550");
+  await caso("cotizar producto: nombre, cantidad, unitario y subtotal", () => {
+    assert.ok(mp.includes("*Panel solar monocristalino 550 W*"));
+    assert.ok(mp.includes("Cantidad: 2 · Precio unitario: $ 690.000 · Subtotal: $ 1.380.000"));
+    assert.ok(mp.endsWith("https://sotecse.com/tienda/producto/prd-panel-550"));
+  });
+  await caso("cotizar producto sin precio", () => {
+    const m2 = mensajeProducto(kit, 1);
+    assert.ok(m2.includes("Precio unitario: Precio a cotizar") && !m2.includes("Subtotal"));
+  });
+
+  // ── Íconos y semilla
+  await caso("íconos: clave conocida y desconocida", () => {
+    assert.equal(iconoDe("sol"), Sun);
+    assert.equal(iconoDe("no-existe"), Package);
+    assert.equal(iconoDe(undefined), Package);
+  });
+  await caso("íconos: claves válidas para la base (a-z)", () => assert.ok(ICONOS.every((i) => /^[a-z]{2,20}$/.test(i.clave))));
+  await caso("semilla: cada categoría con ícono válido", () => assert.ok(CATEGORIAS_SEMILLA.every((c) => ICONOS.some((i) => i.clave === c.icono))));
+  await caso("semilla: banners con enlaces internos válidos", () => {
+    const ids = new Set(PRODUCTOS_SEMILLA.map((p) => p.id));
+    const cats = new Set(CATEGORIAS_SEMILLA.map((c) => c.id));
+    for (const b of BANNERS_SEMILLA) {
+      assert.match(b.enlace, /^\/[A-Za-z0-9/?=&_.#-]*$/);
+      const prod = b.enlace.match(/^\/producto\/(.+)$/)?.[1];
+      const cat = b.enlace.match(/categoria=([^&#]+)/)?.[1];
+      assert.ok((prod && ids.has(prod)) || (cat && cats.has(cat)), b.enlace);
+    }
+  });
+
   // ── Antispam y validación
   await caso("honeypot", () => assert.deepEqual([esBot(""), esBot(undefined), esBot("http://spam")], [false, false, true]));
   await caso("límite de envíos", () => {
@@ -117,7 +151,12 @@ const camara = PRODUCTOS_SEMILLA.find((p) => p.id === "prd-camara-domo")!;
     assert.equal((await repo.categorias()).length, 6);
     assert.equal((await repo.productos()).length, PRODUCTOS_SEMILLA.length);
   });
+  await caso("local: banners activos por orden", async () => {
+    const bs = await repo.banners();
+    assert.deepEqual(bs.map((b) => b.id), ["ban-solar", "ban-cctv", "ban-alarma"]);
+  });
   await caso("local: escribir exige sesión", async () => {
+    await assert.rejects(repo.guardarBanner(BANNERS_SEMILLA[0]), /Entra al panel/);
     await assert.rejects(repo.guardarProducto({ ...panel, nombre: "X" }), /Entra al panel/);
     await assert.rejects(repo.pedidos(), /Entra al panel/);
   });
@@ -137,6 +176,24 @@ const camara = PRODUCTOS_SEMILLA.find((p) => p.id === "prd-camara-domo")!;
     await repo.guardarCategoria({ ...cctv, activa: false });
     assert.ok(!(await repo.productos()).some((p) => p.categoriaId === "cat-cctv"));
     await repo.guardarCategoria(cctv);
+  });
+  await caso("local: banners crear, ocultar y borrar", async () => {
+    await repo.guardarBanner({ ...BANNERS_SEMILLA[0], id: "ban-prueba", orden: 0, titulo: "Prueba" });
+    assert.equal((await repo.banners())[0].id, "ban-prueba");
+    await repo.guardarBanner({ ...BANNERS_SEMILLA[0], id: "ban-prueba", orden: 0, titulo: "Prueba", activo: false });
+    assert.ok(!(await repo.banners()).some((b) => b.id === "ban-prueba"));
+    assert.ok((await repo.banners({ todos: true })).some((b) => b.id === "ban-prueba"));
+    await repo.eliminarBanner("ban-prueba");
+    assert.ok(!(await repo.banners({ todos: true })).some((b) => b.id === "ban-prueba"));
+  });
+  await caso("local: datos de la versión anterior se completan", async () => {
+    const a = almacenMemoria();
+    const viejo = { categorias: CATEGORIAS_SEMILLA.map(({ icono: _i, ...c }) => c), productos: PRODUCTOS_SEMILLA.map(({ nuevo: _n, ...p }) => p), pedidos: [], config: CONFIG_INICIAL };
+    a.setItem("sotec-tienda-v1", JSON.stringify(viejo));
+    const r = crearRepoLocal(a);
+    assert.equal((await r.categorias()).find((c) => c.id === "cat-cctv")?.icono, "camara");
+    assert.ok((await r.productos()).every((p) => typeof p.nuevo === "boolean"));
+    assert.equal((await r.banners()).length, BANNERS_SEMILLA.length);
   });
   await caso("local: no borra categoría con productos", async () => assert.rejects(repo.eliminarCategoria("cat-solar"), /tiene productos/));
   await caso("local: pedido recalcula precios del catálogo", async () => {

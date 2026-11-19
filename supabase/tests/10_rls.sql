@@ -27,7 +27,9 @@ insert into public.productos (id, nombre, categoria_id, precio, activo) values
   ('prd-inactivo', 'Producto inactivo', 'cat-solar', 1000, false),
   ('prd-cat-oculta', 'Producto de categoría oculta', 'cat-oculta', 2000, true);
 
+insert into public.banners (id, titulo, imagen, enlace, activo) values ('ban-1', 'Visible', '/img/a.webp', '/?categoria=cat-solar', true), ('ban-2', 'Oculto', '/img/b.webp', '', false);
 select pg_temp.ok((select count(*) = 2 from public.perfiles), 'trigger crea perfil por usuario');
+select pg_temp.falla($$insert into public.banners (id, imagen, enlace) values ('ban-x', '/img/x.webp', 'https://sitio-externo.test')$$, 'banner no acepta enlaces externos');
 
 -- ── Anónimo
 set role anon;
@@ -35,6 +37,8 @@ select set_config('request.jwt.claim.sub', '', false);
 select pg_temp.ok((select count(*) = 2 from public.productos), 'anon solo ve productos activos de categorías activas');
 select pg_temp.ok((select count(*) = 1 from public.categorias), 'anon solo ve categorías activas');
 select pg_temp.ok((select count(*) = 1 from public.configuracion), 'anon lee la configuración');
+select pg_temp.ok((select count(*) = 1 from public.banners), 'anon solo ve banners activos');
+select pg_temp.falla($$insert into public.banners (id, imagen) values ('ban-z', '/img/z.webp')$$, 'anon no crea banners');
 select pg_temp.falla($$insert into public.pedidos (codigo, cliente, celular, items) values ('T-XXXXXX', '{}', '3001234567', '[]')$$, 'anon no inserta pedidos directo');
 select pg_temp.falla($$insert into public.productos (id, nombre, categoria_id) values ('prd-x', 'Hackeado', 'cat-solar')$$, 'anon no crea productos');
 update public.productos set precio = 1 where id = 'prd-panel';
@@ -77,6 +81,10 @@ update public.pedidos set estado = 'vendido' where total = 1380000;
 select pg_temp.ok((select estado = 'vendido' from public.pedidos where total = 1380000), 'admin cambia el estado');
 insert into public.productos (id, nombre, categoria_id, precio) values ('prd-nuevo', 'Producto nuevo', 'cat-solar', 5000);
 select pg_temp.ok((select count(*) = 5 from public.productos), 'admin crea productos');
+select pg_temp.ok((select count(*) = 2 from public.banners), 'admin ve banners inactivos');
+update public.banners set activo = true where id = 'ban-2';
+update public.categorias set icono = 'sol' where id = 'cat-solar';
+select pg_temp.falla($$update public.categorias set icono = '<script>' where id = 'cat-solar'$$, 'ícono de categoría validado');
 insert into storage.objects (bucket_id, name) values ('productos', 'foto.webp');
 update public.configuracion set whatsapp = '573000000000' where id = 1;
 select pg_temp.falla($$update public.configuracion set whatsapp = 'abc' where id = 1$$, 'configuración valida el número');

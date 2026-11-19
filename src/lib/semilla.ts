@@ -2,22 +2,22 @@
  * Catálogo de ejemplo del modo demostración. Productos genéricos (sin marcas de terceros) y
  * precios de referencia ficticios: SOTEC los reemplaza desde el panel.
  */
-import type { Categoria, Producto } from "./tipos";
+import type { Banner, Categoria, Producto } from "./tipos";
 
 const img = (n: string) => `/img/categorias/${n}.webp`;
 
 export const CATEGORIAS_SEMILLA: Categoria[] = [
-  { id: "cat-solar", nombre: "Energía solar", imagen: img("panel-solar-casa"), orden: 1, activa: true },
-  { id: "cat-alarmas", nombre: "Seguridad electrónica (alarmas)", imagen: img("residencial"), orden: 2, activa: true },
-  { id: "cat-cctv", nombre: "CCTV", imagen: img("cctv-instalacion-camara"), orden: 3, activa: true },
-  { id: "cat-redes", nombre: "Redes y telecomunicaciones", imagen: img("telecom-rack-cableado"), orden: 4, activa: true },
-  { id: "cat-automatizacion", nombre: "Automatización", imagen: img("tablero-electrico"), orden: 5, activa: true },
-  { id: "cat-acceso", nombre: "Control de acceso", imagen: img("control-acceso-torniquetes"), orden: 6, activa: true },
+  { id: "cat-solar", icono: "sol", nombre: "Energía solar", imagen: img("panel-solar-casa"), orden: 1, activa: true },
+  { id: "cat-alarmas", icono: "alarma", nombre: "Seguridad electrónica (alarmas)", imagen: img("residencial"), orden: 2, activa: true },
+  { id: "cat-cctv", icono: "camara", nombre: "CCTV", imagen: img("cctv-instalacion-camara"), orden: 3, activa: true },
+  { id: "cat-redes", icono: "red", nombre: "Redes y telecomunicaciones", imagen: img("telecom-rack-cableado"), orden: 4, activa: true },
+  { id: "cat-automatizacion", icono: "automatizacion", nombre: "Automatización", imagen: img("tablero-electrico"), orden: 5, activa: true },
+  { id: "cat-acceso", icono: "acceso", nombre: "Control de acceso", imagen: img("control-acceso-torniquetes"), orden: 6, activa: true },
 ];
 
 const CREADO = "2026-11-19T12:00:00.000Z";
 let n = 0;
-const p = (x: Omit<Producto, "orden" | "creado" | "activo"> & { activo?: boolean }): Producto => ({ activo: true, ...x, orden: ++n, creado: CREADO });
+const p = (x: Omit<Producto, "orden" | "creado" | "activo" | "nuevo"> & { activo?: boolean; nuevo?: boolean }): Producto => ({ activo: true, nuevo: false, ...x, orden: ++n, creado: CREADO });
 
 export const PRODUCTOS_SEMILLA: Producto[] = [
   p({
@@ -49,6 +49,7 @@ export const PRODUCTOS_SEMILLA: Producto[] = [
     precio: 5400000,
     imagenes: [img("instalacion-solar")],
     destacado: false,
+    nuevo: true,
   }),
   p({
     id: "prd-alarma-kit",
@@ -109,6 +110,7 @@ export const PRODUCTOS_SEMILLA: Producto[] = [
     precio: 1450000,
     imagenes: [img("cableado-switch"), img("telecom-rack-cableado")],
     destacado: false,
+    nuevo: true,
   }),
   p({
     id: "prd-fibra",
@@ -150,4 +152,40 @@ export const PRODUCTOS_SEMILLA: Producto[] = [
     imagenes: [img("control-acceso-torniquetes")],
     destacado: false,
   }),
+];
+
+export const BANNERS_SEMILLA: Banner[] = [
+  {
+    id: "ban-solar",
+    titulo: "Energía solar para tu hogar o empresa",
+    texto: "Kits con instalación profesional y asesoría técnica sin costo.",
+    imagen: img("techo-solar"),
+    imagenMovil: img("panel-solar-casa"),
+    botonTexto: "Ver energía solar",
+    enlace: "/?categoria=cat-solar",
+    orden: 1,
+    activo: true,
+  },
+  {
+    id: "ban-cctv",
+    titulo: "Cámaras de seguridad que ves desde tu celular",
+    texto: "Domos, PTZ y grabadores con visión nocturna.",
+    imagen: img("cctv-poste-industrial"),
+    imagenMovil: img("cctv-instalacion-camara"),
+    botonTexto: "Ver CCTV",
+    enlace: "/?categoria=cat-cctv",
+    orden: 2,
+    activo: true,
+  },
+  {
+    id: "ban-alarma",
+    titulo: "Kit de alarma inalámbrica",
+    texto: "Protege tu casa con sensores, sirena y monitoreo.",
+    imagen: img("hogar-conjunto-poste"),
+    imagenMovil: img("residencial"),
+    botonTexto: "Ver el kit",
+    enlace: "/producto/prd-alarma-kit",
+    orden: 3,
+    activo: true,
+  },
 ];

@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { CheckCircle2, Minus, Plus, Send, Trash2 } from "lucide-react";
 
 import { useTienda } from "@/components/Proveedor";
+import { abrirWhatsApp } from "@/lib/abrir";
 import { esBot, revisarLimite } from "@/lib/antispam";
 import { resumen, subtotal } from "@/lib/carrito";
 import { ErrorDatos } from "@/lib/datos";
@@ -23,6 +24,16 @@ export default function Carrito() {
   const [errores, setErrores] = useState<Errores>({});
   const [hecho, setHecho] = useState<{ codigo: string; url: string } | null>(null);
   const r = resumen(carrito);
+
+  // Desde el carrito lateral («Enviar pedido por WhatsApp») se llega a #datos: enfocar el formulario
+  useEffect(() => {
+    if (!listo || !carrito.length || window.location.hash !== "#datos") return;
+    const t = setTimeout(() => {
+      document.getElementById("datos")?.scrollIntoView({ block: "start" });
+      document.getElementById("nombre")?.focus({ preventScroll: true });
+    }, 50);
+    return () => clearTimeout(t);
+  }, [listo, carrito.length]);
 
   async function enviar(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -66,10 +77,7 @@ export default function Carrito() {
         /* ignorar */
       }
       const url = enlaceWhatsApp(config.whatsapp, mensajePedido(config, pedido.codigo, pedido.cliente, pedido.items));
-      // Sin "noopener" en los rasgos: con él window.open devuelve null y no se sabe si se bloqueó
-      const w = window.open(url, "_blank");
-      if (w) w.opener = null;
-      else window.location.href = url;
+      abrirWhatsApp(url);
       vaciar();
       setHecho({ codigo: pedido.codigo, url });
     } catch (err) {
@@ -114,9 +122,9 @@ export default function Carrito() {
     );
 
   return (
-    <div className="contenedor py-8">
-      <h1 className="text-2xl font-extrabold sm:text-3xl">Tu carrito</h1>
-      <div className="mt-6 grid gap-8 lg:grid-cols-[1fr_380px]">
+    <div className="contenedor py-8 sm:py-12">
+      <h1 className="titulo-seccion">Tu carrito</h1>
+      <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_400px] lg:gap-10">
         <section aria-label="Productos del carrito">
           <ul className="space-y-3">
             {carrito.map((it) => {
@@ -174,7 +182,7 @@ export default function Carrito() {
             {r.aCotizar > 0 && <p className="mt-2 text-xs">El total no incluye los productos a cotizar: te enviamos su valor por WhatsApp.</p>}
           </div>
 
-          <form className="tarjeta space-y-3 p-4" onSubmit={enviar} noValidate>
+          <form id="datos" className="tarjeta scroll-mt-32 space-y-3 p-4" onSubmit={enviar} noValidate>
             <h2 className="text-lg font-bold">Tus datos</h2>
             {(
               [
