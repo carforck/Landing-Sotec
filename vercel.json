@@ -1,0 +1,7 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
+    { "source": "/tienda", "destination": "https://tienda-sotec.vercel.app/tienda" },
+    { "source": "/tienda/:path*", "destination": "https://tienda-sotec.vercel.app/tienda/:path*" }
+  ]
+}
