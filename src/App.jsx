@@ -183,9 +183,8 @@ function Header({ scrolled, hidden, active }) {
           <a href={APP_URL} target="_blank" rel="noreferrer" className="btn btn--outline nav__app" onClick={() => setOpen(false)}>
             <LogIn size={18} aria-hidden="true" /> <span><span className="nav__app-long">Acceder a </span>ControlOne</span>
           </a>
-          <a href={`${import.meta.env.BASE_URL}tienda/`} className="btn btn--outline nav__tienda" title="Tienda virtual SOTEC · próximamente" onClick={() => setOpen(false)}>
+          <a href="/tienda" className="btn btn--outline nav__tienda" title="Tienda virtual SOTEC" onClick={() => setOpen(false)}>
             <ShoppingBag size={18} aria-hidden="true" /> <span>Tienda<span className="nav__app-long"> virtual</span></span>
-            <span className="nav__pronto">Próximamente</span>
           </a>
           <a href="#contacto" className="btn btn--primary nav__cta" onClick={() => setOpen(false)}>
             Solicitar cotización
