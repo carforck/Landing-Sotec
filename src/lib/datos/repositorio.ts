@@ -2,7 +2,7 @@
  * Contrato único de datos. La interfaz no sabe si detrás hay localStorage (modo demostración)
  * o Supabase: las páginas solo usan esto (ver ./index.ts).
  */
-import type { Banner, Categoria, Configuracion, DatosCliente, EstadoPedido, ItemCarrito, Pedido, Producto } from "../tipos";
+import type { Banner, Categoria, Marca, Configuracion, DatosCliente, EstadoPedido, ItemCarrito, Pedido, Producto } from "../tipos";
 
 export type Modo = "local" | "supabase";
 
@@ -25,6 +25,7 @@ export interface Repositorio {
   producto(id: string): Promise<Producto | null>;
   configuracion(): Promise<Configuracion>;
   banners(opts?: { todos?: boolean }): Promise<Banner[]>;
+  marcas(opts?: { todas?: boolean }): Promise<Marca[]>;
 
   // Pedido del cliente (público). Devuelve el pedido guardado (con código y total calculado).
   crearPedido(p: NuevoPedido): Promise<Pedido>;
@@ -39,6 +40,10 @@ export interface Repositorio {
   eliminarCategoria(id: string): Promise<void>;
   guardarBanner(b: Banner): Promise<Banner>;
   eliminarBanner(id: string): Promise<void>;
+  guardarMarca(m: Marca): Promise<Marca>;
+  eliminarMarca(id: string): Promise<void>;
+  /** Solo modo demostración: quita productos, banners y marcas de ejemplo. */
+  borrarCatalogoEjemplo?(): Promise<void>;
   pedidos(): Promise<Pedido[]>;
   cambiarEstadoPedido(id: string, estado: EstadoPedido): Promise<void>;
   guardarConfiguracion(c: Configuracion): Promise<void>;

@@ -51,13 +51,30 @@ create table if not exists public.categorias (
   creado timestamptz not null default now()
 );
 
+create table if not exists public.marcas (
+  id text primary key check (char_length(id) between 3 and 60),
+  nombre text not null check (char_length(nombre) between 1 and 60),
+  logo text not null default '' check (char_length(logo) <= 2000),
+  orden int not null default 0,
+  activa boolean not null default true,
+  creado timestamptz not null default now()
+);
+
 create table if not exists public.productos (
   id text primary key check (char_length(id) between 3 and 60),
+  tipo text not null default 'producto' check (tipo in ('producto', 'servicio')),
   nombre text not null check (char_length(nombre) between 3 and 120),
   categoria_id text not null references public.categorias (id) on update cascade on delete restrict,
+  marca_id text references public.marcas (id) on update cascade on delete set null,
   descripcion text not null default '' check (char_length(descripcion) <= 400),
   ficha_tecnica text not null default '' check (char_length(ficha_tecnica) <= 4000),
+  incluye text not null default '' check (char_length(incluye) <= 2000),
+  modalidad text not null default '' check (char_length(modalidad) <= 80),
+  -- En servicios el precio es de referencia («Desde $X») y no suma al total del pedido
   precio numeric(14, 0) check (precio is null or precio >= 0),
+  -- Oferta: el precio anterior (tachado) debe ser mayor que el precio actual
+  precio_anterior numeric(14, 0) check (precio_anterior is null or (precio is not null and precio_anterior > precio)),
+  segmentos text[] not null default '{hogar,empresa}' check (cardinality(segmentos) between 1 and 2 and segmentos <@ array['hogar', 'empresa']),
   imagenes text[] not null default '{}' check (cardinality(imagenes) <= 6),
   destacado boolean not null default false,
   nuevo boolean not null default false,
@@ -67,9 +84,14 @@ create table if not exists public.productos (
   actualizado timestamptz not null default now()
 );
 create index if not exists productos_categoria on public.productos (categoria_id);
+create index if not exists productos_marca on public.productos (marca_id);
 
 alter table public.categorias enable row level security;
+alter table public.marcas enable row level security;
 alter table public.productos enable row level security;
+
+create policy marcas_publico on public.marcas for select to anon, authenticated using (activa or public.es_admin());
+create policy marcas_admin on public.marcas for all to authenticated using (public.es_admin()) with check (public.es_admin());
 
 create policy categorias_publico on public.categorias for select to anon, authenticated using (activa or public.es_admin());
 create policy categorias_admin on public.categorias for all to authenticated using (public.es_admin()) with check (public.es_admin());
@@ -86,6 +108,8 @@ create trigger productos_actualizado before update on public.productos for each 
 -- ─── Banners del carrusel principal ────────────────────────────────────────
 create table if not exists public.banners (
   id text primary key check (char_length(id) between 3 and 60),
+  -- «carrusel» = banner principal; «promo» = tarjeta de promoción bajo el carrusel
+  ubicacion text not null default 'carrusel' check (ubicacion in ('carrusel', 'promo')),
   titulo text not null default '' check (char_length(titulo) <= 120),
   texto text not null default '' check (char_length(texto) <= 240),
   imagen text not null check (char_length(imagen) between 1 and 2000),
@@ -104,14 +128,16 @@ create policy banners_admin on public.banners for all to authenticated using (pu
 -- ─── Configuración pública (una fila) ──────────────────────────────────────
 create table if not exists public.configuracion (
   id int primary key default 1 check (id = 1),
-  whatsapp text not null check (whatsapp ~ '^[0-9]{10,15}$'),
+  -- El pedido llega al número del segmento elegido en el formulario («¿Es para hogar o empresa?»)
+  whatsapp_hogar text not null check (whatsapp_hogar ~ '^[0-9]{10,15}$'),
+  whatsapp_empresa text not null check (whatsapp_empresa ~ '^[0-9]{10,15}$'),
   mensaje_inicial text not null check (char_length(mensaje_inicial) between 1 and 300)
 );
 alter table public.configuracion enable row level security;
 create policy configuracion_publico on public.configuracion for select to anon, authenticated using (true);
 create policy configuracion_admin on public.configuracion for all to authenticated using (public.es_admin()) with check (public.es_admin());
-insert into public.configuracion (id, whatsapp, mensaje_inicial)
-values (1, '573104696060', 'Hola SOTEC, quiero cotizar este pedido de la tienda virtual:')
+insert into public.configuracion (id, whatsapp_hogar, whatsapp_empresa, mensaje_inicial)
+values (1, '573104696060', '573104696060', 'Hola SOTEC, quiero cotizar este pedido de la tienda virtual:')
 on conflict (id) do nothing;
 
 -- ─── Pedidos ───────────────────────────────────────────────────────────────
@@ -120,6 +146,7 @@ create table if not exists public.pedidos (
   codigo text not null unique,
   cliente jsonb not null,
   celular text not null,
+  segmento text not null default 'hogar' check (segmento in ('hogar', 'empresa')),
   items jsonb not null check (jsonb_typeof(items) = 'array'),
   total numeric(14, 0) not null default 0,
   con_items_a_cotizar boolean not null default false,
@@ -135,9 +162,9 @@ create policy pedidos_admin_lee on public.pedidos for select to authenticated us
 create policy pedidos_admin_cambia on public.pedidos for update to authenticated using (public.es_admin()) with check (public.es_admin());
 create policy pedidos_admin_borra on public.pedidos for delete to authenticated using (public.es_admin());
 
--- Crear pedido (público). Valida datos, toma nombre y precio del catálogo vigente (nunca los del
--- navegador), descarta productos inactivos y limita a 3 pedidos por celular cada 10 minutos y
--- 60 por hora en total.
+-- Crear pedido (público). Valida datos, toma nombre, tipo y precio del catálogo vigente (nunca
+-- los del navegador), descarta lo inactivo, suma al total solo productos con precio (los servicios
+-- son «desde» y se cotizan) y limita a 3 pedidos por celular cada 10 minutos y 60 por hora.
 create or replace function public.crear_pedido(p_cliente jsonb, p_items jsonb)
 returns jsonb
 language plpgsql
@@ -148,6 +175,8 @@ declare
   v_nombre text := btrim(coalesce(p_cliente ->> 'nombre', ''));
   v_celular text := regexp_replace(coalesce(p_cliente ->> 'celular', ''), '[^0-9+]', '', 'g');
   v_ciudad text := btrim(coalesce(p_cliente ->> 'ciudad', ''));
+  v_segmento text := coalesce(p_cliente ->> 'segmento', '');
+  v_empresa text := btrim(coalesce(p_cliente ->> 'empresa', ''));
   v_correo text := btrim(coalesce(p_cliente ->> 'correo', ''));
   v_nota text := btrim(coalesce(p_cliente ->> 'nota', ''));
   v_items jsonb := '[]'::jsonb;
@@ -160,6 +189,8 @@ begin
   if char_length(v_nombre) not between 3 and 80 then raise exception 'Nombre no válido'; end if;
   if v_celular !~ '^\+?[0-9]{7,15}$' then raise exception 'Celular no válido'; end if;
   if char_length(v_ciudad) not between 2 and 60 then raise exception 'Ciudad no válida'; end if;
+  if v_segmento not in ('hogar', 'empresa') then raise exception 'Indica si es para hogar o empresa'; end if;
+  if char_length(v_empresa) > 100 then raise exception 'Nombre de empresa muy largo'; end if;
   if char_length(v_correo) > 120 or (v_correo <> '' and v_correo !~ '^[^@\s]+@[^@\s]+\.[^@\s]+$') then raise exception 'Correo no válido'; end if;
   if char_length(v_nota) > 500 then raise exception 'Nota muy larga'; end if;
   if jsonb_typeof(p_items) <> 'array' or jsonb_array_length(p_items) not between 1 and 50 then raise exception 'Carrito no válido'; end if;
@@ -172,15 +203,20 @@ begin
   end if;
 
   for r in
-    select p.id, p.nombre, p.precio, coalesce(p.imagenes[1], '') as imagen,
-           least(greatest(coalesce((i ->> 'cantidad')::int, 1), 1), 999) as cantidad
-    from jsonb_array_elements(p_items) i
-    join public.productos p on p.id = i ->> 'producto_id'
+    select p.id, p.tipo, p.nombre, p.precio, p.modalidad, coalesce(p.imagenes[1], '') as imagen,
+           least(greatest(coalesce((e.i ->> 'cantidad')::int, 1), 1), 999) as cantidad
+    from jsonb_array_elements(p_items) with ordinality as e (i, n)
+    join public.productos p on p.id = e.i ->> 'producto_id'
     join public.categorias c on c.id = p.categoria_id
     where p.activo and c.activa
+    order by e.n
   loop
-    v_items := v_items || jsonb_build_object('productoId', r.id, 'nombre', r.nombre, 'precio', r.precio, 'imagen', r.imagen, 'cantidad', r.cantidad);
-    if r.precio is null then v_cotizar := true; else v_total := v_total + r.precio * r.cantidad; end if;
+    -- Un elemento por ítem (precio null se conserva: «a cotizar»)
+    v_items := v_items || jsonb_build_array(
+      jsonb_strip_nulls(jsonb_build_object('productoId', r.id, 'tipo', r.tipo, 'nombre', r.nombre,
+        'modalidad', case when r.tipo = 'servicio' and r.modalidad <> '' then r.modalidad end, 'imagen', r.imagen, 'cantidad', r.cantidad))
+      || jsonb_build_object('precio', r.precio));
+    if r.tipo = 'servicio' or r.precio is null then v_cotizar := true; else v_total := v_total + r.precio * r.cantidad; end if;
   end loop;
   if jsonb_array_length(v_items) = 0 then raise exception 'Los productos del carrito ya no están disponibles'; end if;
 
@@ -189,11 +225,12 @@ begin
     exit when char_length(v_codigo) = 8 and not exists (select 1 from public.pedidos where codigo = v_codigo);
   end loop;
 
-  insert into public.pedidos (codigo, cliente, celular, items, total, con_items_a_cotizar)
+  insert into public.pedidos (codigo, cliente, celular, segmento, items, total, con_items_a_cotizar)
   values (
     v_codigo,
-    jsonb_build_object('nombre', v_nombre, 'celular', v_celular, 'ciudad', v_ciudad, 'correo', nullif(v_correo, ''), 'nota', nullif(v_nota, '')),
-    v_celular, v_items, v_total, v_cotizar
+    jsonb_strip_nulls(jsonb_build_object('nombre', v_nombre, 'celular', v_celular, 'ciudad', v_ciudad, 'segmento', v_segmento,
+      'empresa', nullif(v_empresa, ''), 'correo', nullif(v_correo, ''), 'nota', nullif(v_nota, ''))),
+    v_celular, v_segmento, v_items, v_total, v_cotizar
   )
   returning * into v_fila;
 

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ClipboardList, FolderTree, GalleryHorizontal, LayoutDashboard, LogOut, Package, Settings, Store, TriangleAlert } from "lucide-react";
+import { ClipboardList, FolderTree, GalleryHorizontal, Tags, LayoutDashboard, LogOut, Package, Settings, Store, TriangleAlert } from "lucide-react";
 
 import { useTienda } from "@/components/Proveedor";
 import { ErrorDatos, type Sesion } from "@/lib/datos";
@@ -11,9 +11,10 @@ import { urlImagen } from "@/lib/rutas";
 
 const MENU = [
   { href: "/admin", texto: "Resumen", Icono: LayoutDashboard },
-  { href: "/admin/productos", texto: "Productos", Icono: Package },
+  { href: "/admin/productos", texto: "Productos y servicios", Icono: Package },
   { href: "/admin/categorias", texto: "Categorías", Icono: FolderTree },
-  { href: "/admin/banners", texto: "Banners", Icono: GalleryHorizontal },
+  { href: "/admin/banners", texto: "Banners y promos", Icono: GalleryHorizontal },
+  { href: "/admin/marcas", texto: "Marcas", Icono: Tags },
   { href: "/admin/pedidos", texto: "Pedidos", Icono: ClipboardList },
   { href: "/admin/configuracion", texto: "Configuración", Icono: Settings },
 ];

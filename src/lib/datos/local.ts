@@ -3,15 +3,18 @@
  * Lo que se agrega en el panel NO lo ven otros visitantes. Para producción: Supabase.
  */
 import { resumen, sincronizar } from "../carrito";
-import { BANNERS_SEMILLA, CATEGORIAS_SEMILLA, PRODUCTOS_SEMILLA } from "../semilla";
-import { CONFIG_INICIAL, type Banner, type Categoria, type Configuracion, type Pedido, type Producto } from "../tipos";
+import { normalizarBanner, normalizarCategoria, normalizarConfig, normalizarMarca, normalizarProducto } from "../normalizar";
+import { BANNERS_SEMILLA, CATEGORIAS_SEMILLA, MARCAS_SEMILLA, PRODUCTOS_SEMILLA, esEjemplo } from "../semilla";
+import { CONFIG_INICIAL, type Banner, type Categoria, type Configuracion, type Marca, type Pedido, type Producto } from "../tipos";
 import { ErrorDatos, codigoPedido, nuevoId, type NuevoPedido, type Repositorio, type Sesion } from "./repositorio";
 
-export const CLAVE_LOCAL = "sotec-tienda-v1";
+/** v2: catálogo de productos y servicios (la v1 solo tenía productos de ejemplo). */
+export const CLAVE_LOCAL = "sotec-tienda-v2";
 export const CLAVE_SESION = "sotec-tienda-admin";
 
 interface Estado {
   banners: Banner[];
+  marcas: Marca[];
   categorias: Categoria[];
   productos: Producto[];
   pedidos: Pedido[];
@@ -32,6 +35,7 @@ export function almacenMemoria(): Almacen {
 
 const inicial = (): Estado => ({
   banners: structuredClone(BANNERS_SEMILLA),
+  marcas: structuredClone(MARCAS_SEMILLA),
   categorias: structuredClone(CATEGORIAS_SEMILLA),
   productos: structuredClone(PRODUCTOS_SEMILLA),
   pedidos: [],
@@ -39,25 +43,25 @@ const inicial = (): Estado => ({
 });
 
 const ordenar = <T extends { orden: number }>(xs: T[]) => [...xs].sort((a, b) => a.orden - b.orden);
+const lista = <T,>(v: unknown, def: T[], f: (x: Record<string, unknown>) => T): T[] => (Array.isArray(v) ? v.filter((x) => x && typeof x === "object").map((x) => f(x as Record<string, unknown>)) : def);
 
 export function crearRepoLocal(almacen: Almacen, sesionAlmacen: Almacen = almacen): Repositorio {
   const leer = (): Estado => {
+    const base = inicial();
     try {
       const raw = almacen.getItem(CLAVE_LOCAL);
-      if (!raw) return inicial();
-      const e = JSON.parse(raw) as Partial<Estado>;
-      const base = inicial();
-      // Datos guardados por una versión anterior: completar campos nuevos
-      const iconoSemilla = new Map(base.categorias.map((c) => [c.id, c.icono]));
+      if (!raw) return base;
+      const e = JSON.parse(raw) as Record<string, unknown>;
       return {
-        banners: Array.isArray(e.banners) ? e.banners : base.banners,
-        categorias: (Array.isArray(e.categorias) ? e.categorias : base.categorias).map((c) => ({ ...c, icono: c.icono ?? iconoSemilla.get(c.id) ?? "paquete" })),
-        productos: (Array.isArray(e.productos) ? e.productos : base.productos).map((p) => ({ ...p, nuevo: Boolean(p.nuevo) })),
-        pedidos: Array.isArray(e.pedidos) ? e.pedidos : [],
-        config: { ...CONFIG_INICIAL, ...(e.config ?? {}) },
+        banners: lista(e.banners, base.banners, normalizarBanner),
+        marcas: lista(e.marcas, base.marcas, normalizarMarca),
+        categorias: lista(e.categorias, base.categorias, normalizarCategoria),
+        productos: lista(e.productos, base.productos, normalizarProducto),
+        pedidos: Array.isArray(e.pedidos) ? (e.pedidos as Pedido[]) : [],
+        config: normalizarConfig((e.config as Record<string, unknown>) ?? {}),
       };
     } catch {
-      return inicial();
+      return base;
     }
   };
   const escribir = (e: Estado) => {
@@ -69,6 +73,11 @@ export function crearRepoLocal(almacen: Almacen, sesionAlmacen: Almacen = almace
   };
   const exigirAdmin = () => {
     if (sesionAlmacen.getItem(CLAVE_SESION) !== "1") throw new ErrorDatos("Entra al panel para hacer cambios.");
+  };
+  const upsert = <T extends { id: string }>(xs: T[], x: T) => {
+    const i = xs.findIndex((y) => y.id === x.id);
+    if (i >= 0) xs[i] = x;
+    else xs.push(x);
   };
 
   return {
@@ -94,10 +103,14 @@ export function crearRepoLocal(almacen: Almacen, sesionAlmacen: Almacen = almace
       const bs = ordenar(leer().banners);
       return opts?.todos ? bs : bs.filter((b) => b.activo);
     },
+    async marcas(opts) {
+      const ms = ordenar(leer().marcas);
+      return opts?.todas ? ms : ms.filter((m) => m.activa);
+    },
 
     async crearPedido({ cliente, items }: NuevoPedido) {
       const e = leer();
-      // Precios desde el catálogo vigente, nunca los que trae el carrito
+      // Precios y tipos desde el catálogo vigente, nunca los que trae el carrito
       const limpios = sincronizar(items, e.productos);
       if (!limpios.length) throw new ErrorDatos("Tu carrito está vacío o sus productos ya no están disponibles.");
       const r = resumen(limpios);
@@ -107,7 +120,7 @@ export function crearRepoLocal(almacen: Almacen, sesionAlmacen: Almacen = almace
         cliente,
         items: limpios,
         total: r.total,
-        conItemsACotizar: r.aCotizar > 0,
+        conItemsACotizar: r.aCotizar > 0 || r.servicios > 0,
         estado: "pendiente",
         creado: new Date().toISOString(),
       };
@@ -131,9 +144,7 @@ export function crearRepoLocal(almacen: Almacen, sesionAlmacen: Almacen = almace
     async guardarProducto(p) {
       exigirAdmin();
       const e = leer();
-      const i = e.productos.findIndex((x) => x.id === p.id);
-      if (i >= 0) e.productos[i] = p;
-      else e.productos.push(p);
+      upsert(e.productos, p);
       escribir(e);
       return p;
     },
@@ -146,9 +157,7 @@ export function crearRepoLocal(almacen: Almacen, sesionAlmacen: Almacen = almace
     async guardarCategoria(c) {
       exigirAdmin();
       const e = leer();
-      const i = e.categorias.findIndex((x) => x.id === c.id);
-      if (i >= 0) e.categorias[i] = c;
-      else e.categorias.push(c);
+      upsert(e.categorias, c);
       escribir(e);
       return c;
     },
@@ -162,9 +171,7 @@ export function crearRepoLocal(almacen: Almacen, sesionAlmacen: Almacen = almace
     async guardarBanner(b) {
       exigirAdmin();
       const e = leer();
-      const i = e.banners.findIndex((x) => x.id === b.id);
-      if (i >= 0) e.banners[i] = b;
-      else e.banners.push(b);
+      upsert(e.banners, b);
       escribir(e);
       return b;
     },
@@ -172,6 +179,31 @@ export function crearRepoLocal(almacen: Almacen, sesionAlmacen: Almacen = almace
       exigirAdmin();
       const e = leer();
       e.banners = e.banners.filter((x) => x.id !== id);
+      escribir(e);
+    },
+    async guardarMarca(m) {
+      exigirAdmin();
+      const e = leer();
+      upsert(e.marcas, m);
+      escribir(e);
+      return m;
+    },
+    async eliminarMarca(id) {
+      exigirAdmin();
+      const e = leer();
+      e.marcas = e.marcas.filter((x) => x.id !== id);
+      // Igual que en la base (on delete set null)
+      e.productos = e.productos.map((p) => (p.marcaId === id ? { ...p, marcaId: null } : p));
+      escribir(e);
+    },
+    async borrarCatalogoEjemplo() {
+      exigirAdmin();
+      const e = leer();
+      e.productos = e.productos.filter((p) => !esEjemplo(p.id));
+      e.banners = e.banners.filter((b) => !esEjemplo(b.id));
+      const marcasEjemplo = new Set(e.marcas.filter((m) => esEjemplo(m.id)).map((m) => m.id));
+      e.marcas = e.marcas.filter((m) => !marcasEjemplo.has(m.id));
+      e.productos = e.productos.map((p) => (p.marcaId && marcasEjemplo.has(p.marcaId) ? { ...p, marcaId: null } : p));
       escribir(e);
     },
     async pedidos() {

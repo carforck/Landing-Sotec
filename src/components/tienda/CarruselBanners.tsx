@@ -14,7 +14,8 @@ const INTERVALO = 6000;
  * mouse o enfocar, tiene botón de pausa, flechas, puntos y teclado (← →).
  */
 export function CarruselBanners() {
-  const { banners, listo } = useTienda();
+  const { banners: todos, listo } = useTienda();
+  const banners = todos.filter((b) => b.ubicacion === "carrusel");
   const [i, setI] = useState(0);
   const [pausaUsuario, setPausaUsuario] = useState(false);
   const [encima, setEncima] = useState(false);

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Plus, Save, Trash2 } from "lucide-react";
 
+import { CampoImagen } from "@/components/admin/CampoImagen";
 import { useTienda } from "@/components/Proveedor";
 import { ErrorDatos, nuevoId } from "@/lib/datos";
 import { ICONOS, iconoDe } from "@/lib/iconos";
@@ -37,6 +38,7 @@ export default function Categorias() {
   return (
     <>
       <h1 className="text-2xl font-bold">Categorías</h1>
+      <p className="text-sm">Sin foto, la tarjeta muestra el ícono. Recuerda «Guardar» cada categoría después de cambiarla.</p>
       <form
         className="tarjeta flex flex-wrap gap-2 p-4"
         onSubmit={(e) => {
@@ -75,6 +77,9 @@ export default function Categorias() {
             <label className="flex min-h-[44px] items-center gap-2 text-sm font-semibold text-tinta">
               <input type="checkbox" className="h-5 w-5 accent-marca-btn" checked={c.activa} onChange={(e) => editar(c.id, { activa: e.target.checked })} /> Visible
             </label>
+            <div className="w-full">
+              <CampoImagen etiqueta="Foto de la tarjeta" opcional valor={c.imagen} alCambiar={(v) => editar(c.id, { imagen: v })} dataId={`cat-${c.id}`} ancho="w-24" />
+            </div>
             <button type="button" className="btn-secundario px-3" onClick={() => repo && void hacer(() => repo.guardarCategoria({ ...c, nombre: c.nombre.trim() }), "Guardado.")} aria-label={`Guardar ${c.nombre}`}>
               <Save className="h-4 w-4" aria-hidden />
             </button>

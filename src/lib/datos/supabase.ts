@@ -7,36 +7,25 @@
 import { createBrowserClient } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { CONFIG_INICIAL, type Banner, type Categoria, type Configuracion, type EstadoPedido, type ItemCarrito, type Pedido, type Producto } from "../tipos";
+import { normalizarBanner, normalizarCategoria, normalizarConfig, normalizarMarca, normalizarProducto } from "../normalizar";
+import type { Banner, Categoria, EstadoPedido, ItemCarrito, Marca, Pedido, Producto } from "../tipos";
 import { ErrorDatos, nuevoId, type Repositorio, type Sesion } from "./repositorio";
 
 export const BUCKET_IMAGENES = "productos";
 
 type Fila = Record<string, unknown>;
 
-const aCategoria = (f: Fila): Categoria => ({
-  id: String(f.id),
-  nombre: String(f.nombre),
-  imagen: String(f.imagen ?? ""),
-  icono: String(f.icono ?? "paquete"),
-  orden: Number(f.orden ?? 0),
-  activa: Boolean(f.activa),
-});
+// snake_case de la base ⇄ camelCase de la app
+const aCategoria = (f: Fila): Categoria => normalizarCategoria(f);
 const deCategoria = (c: Categoria) => ({ id: c.id, nombre: c.nombre, imagen: c.imagen, icono: c.icono, orden: c.orden, activa: c.activa });
 
-const aBanner = (f: Fila): Banner => ({
-  id: String(f.id),
-  titulo: String(f.titulo ?? ""),
-  texto: String(f.texto ?? ""),
-  imagen: String(f.imagen ?? ""),
-  imagenMovil: String(f.imagen_movil ?? ""),
-  botonTexto: String(f.boton_texto ?? ""),
-  enlace: String(f.enlace ?? ""),
-  orden: Number(f.orden ?? 0),
-  activo: Boolean(f.activo),
-});
+const aMarca = (f: Fila): Marca => normalizarMarca(f);
+const deMarca = (m: Marca) => ({ id: m.id, nombre: m.nombre, logo: m.logo, orden: m.orden, activa: m.activa });
+
+const aBanner = (f: Fila): Banner => normalizarBanner({ ...f, imagenMovil: f.imagen_movil, botonTexto: f.boton_texto } as Fila);
 const deBanner = (b: Banner) => ({
   id: b.id,
+  ubicacion: b.ubicacion,
   titulo: b.titulo,
   texto: b.texto,
   imagen: b.imagen,
@@ -47,27 +36,28 @@ const deBanner = (b: Banner) => ({
   activo: b.activo,
 });
 
-const aProducto = (f: Fila): Producto => ({
-  id: String(f.id),
-  nombre: String(f.nombre),
-  categoriaId: String(f.categoria_id),
-  descripcion: String(f.descripcion ?? ""),
-  fichaTecnica: String(f.ficha_tecnica ?? ""),
-  precio: f.precio == null ? null : Number(f.precio),
-  imagenes: Array.isArray(f.imagenes) ? (f.imagenes as string[]) : [],
-  destacado: Boolean(f.destacado),
-  nuevo: Boolean(f.nuevo),
-  activo: Boolean(f.activo),
-  orden: Number(f.orden ?? 0),
-  creado: String(f.creado ?? ""),
-});
+const aProducto = (f: Fila): Producto =>
+  normalizarProducto({
+    ...f,
+    categoriaId: f.categoria_id,
+    marcaId: f.marca_id,
+    fichaTecnica: f.ficha_tecnica,
+    precio: f.precio == null ? null : Number(f.precio),
+    precioAnterior: f.precio_anterior == null ? null : Number(f.precio_anterior),
+  } as Fila);
 const deProducto = (p: Producto) => ({
   id: p.id,
+  tipo: p.tipo,
   nombre: p.nombre,
   categoria_id: p.categoriaId,
+  marca_id: p.marcaId,
   descripcion: p.descripcion,
   ficha_tecnica: p.fichaTecnica,
+  incluye: p.incluye,
+  modalidad: p.modalidad,
   precio: p.precio,
+  precio_anterior: p.precioAnterior,
+  segmentos: p.segmentos,
   imagenes: p.imagenes,
   destacado: p.destacado,
   nuevo: p.nuevo,
@@ -78,7 +68,7 @@ const deProducto = (p: Producto) => ({
 const aPedido = (f: Fila): Pedido => ({
   id: String(f.id),
   codigo: String(f.codigo),
-  cliente: (f.cliente as Pedido["cliente"]) ?? { nombre: "", celular: "", ciudad: "" },
+  cliente: (f.cliente as Pedido["cliente"]) ?? { nombre: "", celular: "", ciudad: "", segmento: "hogar" },
   items: (f.items as ItemCarrito[]) ?? [],
   total: Number(f.total ?? 0),
   conItemsACotizar: Boolean(f.con_items_a_cotizar),
@@ -100,22 +90,28 @@ export function crearRepoSupabase(url: string, anonKey: string): Repositorio {
     return { correo: data.user.email ?? "", esAdmin: perfil?.rol === "admin" };
   };
 
+  async function listar<T>(tabla: string, campoActivo: string, todos: boolean | undefined, f: (x: Fila) => T, texto: string): Promise<T[]> {
+    let q = sb.from(tabla).select("*").order("orden");
+    if (!todos) q = q.eq(campoActivo, true);
+    const { data, error } = await q;
+    falla(error, texto);
+    return (data ?? []).map(f);
+  }
+  async function guardar(tabla: string, fila: Fila, texto: string) {
+    const { error } = await sb.from(tabla).upsert(fila);
+    falla(error, texto);
+  }
+  async function borrar(tabla: string, id: string, texto: string) {
+    const { error } = await sb.from(tabla).delete().eq("id", id);
+    falla(error, texto);
+  }
+
   return {
     modo: "supabase",
 
-    async categorias(opts) {
-      let q = sb.from("categorias").select("*").order("orden");
-      if (!opts?.todas) q = q.eq("activa", true);
-      const { data, error } = await q;
-      falla(error, "No se pudieron cargar las categorías");
-      return (data ?? []).map(aCategoria);
-    },
+    categorias: (opts) => listar("categorias", "activa", opts?.todas, aCategoria, "No se pudieron cargar las categorías"),
     async productos(opts) {
-      let q = sb.from("productos").select("*").order("orden");
-      if (!opts?.todos) q = q.eq("activo", true);
-      const { data, error } = await q;
-      falla(error, "No se pudieron cargar los productos");
-      const ps = (data ?? []).map(aProducto);
+      const ps = await listar("productos", "activo", opts?.todos, aProducto, "No se pudieron cargar los productos");
       if (opts?.todos) return ps;
       // Con sesión de admin la RLS deja ver categorías ocultas: la tienda pública no las muestra
       const { data: cs } = await sb.from("categorias").select("id").eq("activa", true);
@@ -127,18 +123,12 @@ export function crearRepoSupabase(url: string, anonKey: string): Repositorio {
       falla(error, "No se pudo cargar el producto");
       return data ? aProducto(data) : null;
     },
-    async configuracion(): Promise<Configuracion> {
-      const { data } = await sb.from("configuracion").select("whatsapp, mensaje_inicial").eq("id", 1).maybeSingle();
-      return data ? { whatsapp: String(data.whatsapp), mensajeInicial: String(data.mensaje_inicial) } : CONFIG_INICIAL;
+    async configuracion() {
+      const { data } = await sb.from("configuracion").select("whatsapp_hogar, whatsapp_empresa, mensaje_inicial").eq("id", 1).maybeSingle();
+      return normalizarConfig({ whatsappHogar: String(data?.whatsapp_hogar ?? ""), whatsappEmpresa: String(data?.whatsapp_empresa ?? ""), mensajeInicial: String(data?.mensaje_inicial ?? "") });
     },
-
-    async banners(opts) {
-      let q = sb.from("banners").select("*").order("orden");
-      if (!opts?.todos) q = q.eq("activo", true);
-      const { data, error } = await q;
-      falla(error, "No se pudieron cargar los banners");
-      return (data ?? []).map(aBanner);
-    },
+    banners: (opts) => listar("banners", "activo", opts?.todos, aBanner, "No se pudieron cargar los banners"),
+    marcas: (opts) => listar("marcas", "activa", opts?.todas, aMarca, "No se pudieron cargar las marcas"),
 
     async crearPedido({ cliente, items }) {
       const { data, error } = await sb.rpc("crear_pedido", {
@@ -165,32 +155,26 @@ export function crearRepoSupabase(url: string, anonKey: string): Repositorio {
     },
 
     async guardarProducto(p) {
-      const { error } = await sb.from("productos").upsert(deProducto(p));
-      falla(error, "No se pudo guardar el producto");
+      await guardar("productos", deProducto(p), "No se pudo guardar el producto");
       return p;
     },
-    async eliminarProducto(id) {
-      const { error } = await sb.from("productos").delete().eq("id", id);
-      falla(error, "No se pudo eliminar el producto");
-    },
+    eliminarProducto: (id) => borrar("productos", id, "No se pudo eliminar el producto"),
     async guardarCategoria(c) {
-      const { error } = await sb.from("categorias").upsert(deCategoria(c));
-      falla(error, "No se pudo guardar la categoría");
+      await guardar("categorias", deCategoria(c), "No se pudo guardar la categoría");
       return c;
     },
-    async eliminarCategoria(id) {
-      const { error } = await sb.from("categorias").delete().eq("id", id);
-      falla(error, "No se pudo eliminar la categoría (¿tiene productos?)");
-    },
+    eliminarCategoria: (id) => borrar("categorias", id, "No se pudo eliminar la categoría (¿tiene productos?)"),
     async guardarBanner(b) {
-      const { error } = await sb.from("banners").upsert(deBanner(b));
-      falla(error, "No se pudo guardar el banner");
+      await guardar("banners", deBanner(b), "No se pudo guardar el banner");
       return b;
     },
-    async eliminarBanner(id) {
-      const { error } = await sb.from("banners").delete().eq("id", id);
-      falla(error, "No se pudo eliminar el banner");
+    eliminarBanner: (id) => borrar("banners", id, "No se pudo eliminar el banner"),
+    async guardarMarca(m) {
+      await guardar("marcas", deMarca(m), "No se pudo guardar la marca");
+      return m;
     },
+    eliminarMarca: (id) => borrar("marcas", id, "No se pudo eliminar la marca"),
+
     async pedidos() {
       const { data, error } = await sb.from("pedidos").select("*").order("creado", { ascending: false }).limit(500);
       falla(error, "No se pudieron cargar los pedidos");
@@ -201,8 +185,7 @@ export function crearRepoSupabase(url: string, anonKey: string): Repositorio {
       falla(error, "No se pudo cambiar el estado");
     },
     async guardarConfiguracion(c) {
-      const { error } = await sb.from("configuracion").upsert({ id: 1, whatsapp: c.whatsapp, mensaje_inicial: c.mensajeInicial });
-      falla(error, "No se pudo guardar la configuración");
+      await guardar("configuracion", { id: 1, whatsapp_hogar: c.whatsappHogar, whatsapp_empresa: c.whatsappEmpresa, mensaje_inicial: c.mensajeInicial }, "No se pudo guardar la configuración");
     },
     async subirImagen(archivo, nombre) {
       const ext = archivo.type === "image/webp" ? "webp" : "jpg";

@@ -1,51 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { ImagePlus, Pencil, Plus, Trash2 } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
+
+import { CampoImagen } from "@/components/admin/CampoImagen";
 
 import { useTienda } from "@/components/Proveedor";
 import { ErrorDatos, nuevoId } from "@/lib/datos";
-import { comprimirImagen } from "@/lib/imagen";
 import { urlImagen } from "@/lib/rutas";
-import type { Banner, Categoria, Producto } from "@/lib/tipos";
+import type { Banner, Categoria, Producto, UbicacionBanner } from "@/lib/tipos";
 
-const vacio = (orden: number): Banner => ({ id: nuevoId("ban"), titulo: "", texto: "", imagen: "", imagenMovil: "", botonTexto: "Ver más", enlace: "", orden, activo: true });
-
-function CampoImagen({ etiqueta, valor, alCambiar, opcional, dataId }: { etiqueta: string; valor: string; alCambiar: (v: string) => void; opcional?: boolean; dataId: string }) {
-  const { repo } = useTienda();
-  const [cargando, setCargando] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  async function subir(f: File | undefined) {
-    if (!f || !repo) return;
-    setCargando(true);
-    setError(null);
-    try {
-      alCambiar(await repo.subirImagen(await comprimirImagen(f), f.name));
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo cargar la imagen.");
-    } finally {
-      setCargando(false);
-    }
-  }
-  return (
-    <div>
-      <p className="etiqueta">{etiqueta}{opcional && " (opcional)"}</p>
-      <div className="flex items-center gap-3">
-        <div className="h-16 w-28 shrink-0 overflow-hidden rounded-lg border border-linea bg-fondo">
-          {valor && <img src={urlImagen(valor)} alt="" className="h-full w-full object-cover" data-vista={dataId} />}
-        </div>
-        <label className="btn-secundario cursor-pointer focus-within:ring-2 focus-within:ring-marca-btn">
-          <ImagePlus className="h-4 w-4" aria-hidden /> {cargando ? "Cargando…" : valor ? "Cambiar" : "Subir"}
-          <input type="file" accept="image/*" className="sr-only" disabled={cargando} onChange={(e) => void subir(e.target.files?.[0])} aria-label={etiqueta} data-subir={dataId} />
-        </label>
-        {opcional && valor && (
-          <button type="button" className="btn px-2 text-sm text-tenue hover:text-tinta" onClick={() => alCambiar("")}>Quitar</button>
-        )}
-      </div>
-      {error && <p role="alert" className="mt-1 text-sm text-red-700">{error}</p>}
-    </div>
-  );
-}
+const vacio = (orden: number, ubicacion: UbicacionBanner = "carrusel"): Banner => ({ id: nuevoId("ban"), ubicacion, titulo: "", texto: "", imagen: "", imagenMovil: "", botonTexto: "Ver más", enlace: "", orden, activo: true });
 
 export default function Banners() {
   const { repo, recargar } = useTienda();
@@ -94,6 +59,9 @@ export default function Banners() {
   const destinos = [
     { valor: "", texto: "Sin botón" },
     { valor: "/carrito", texto: "Carrito" },
+    { valor: "/?tipo=servicio", texto: "Todos los servicios" },
+    { valor: "/?segmento=hogar", texto: "Para el hogar" },
+    { valor: "/?segmento=empresa", texto: "Para empresas" },
     ...categorias.map((c) => ({ valor: `/?categoria=${c.id}`, texto: `Categoría: ${c.nombre}` })),
     ...productos.map((p) => ({ valor: `/producto/${p.id}`, texto: `Producto: ${p.nombre}` })),
   ];
@@ -103,16 +71,28 @@ export default function Banners() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">Banners</h1>
         {!editando && (
-          <button type="button" className="btn-primario" onClick={() => setEditando(vacio(banners.reduce((m, b) => Math.max(m, b.orden), 0) + 1))} data-nuevo-banner>
-            <Plus className="h-4 w-4" aria-hidden /> Nuevo banner
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className="btn-primario" onClick={() => setEditando(vacio(banners.reduce((m, b) => Math.max(m, b.orden), 0) + 1))} data-nuevo-banner>
+              <Plus className="h-4 w-4" aria-hidden /> Nuevo banner
+            </button>
+            <button type="button" className="btn-secundario" onClick={() => setEditando(vacio(banners.reduce((m, b) => Math.max(m, b.orden), 0) + 1, "promo"))} data-nueva-promo>
+              <Plus className="h-4 w-4" aria-hidden /> Nueva promoción
+            </button>
+          </div>
         )}
       </div>
-      <p className="text-sm">Se muestran en el carrusel de la portada, en el orden indicado. Imagen de escritorio horizontal (ej. 1600×600); la de celular es opcional.</p>
+      <p className="text-sm">«Carrusel»: banners grandes de la portada (imagen horizontal, ej. 1600×600; la de celular es opcional). «Promoción»: tarjetas bajo el carrusel (se muestran hasta 3). El texto va encima de la imagen: no uses imágenes con texto.</p>
       {msg && <p role="status" className="text-sm">{msg}</p>}
 
       {editando && (
         <form onSubmit={guardar} className="tarjeta grid gap-4 p-4 sm:grid-cols-2" data-editor-banner>
+          <div className="sm:col-span-2">
+            <label htmlFor="b-ubicacion" className="etiqueta">Ubicación</label>
+            <select id="b-ubicacion" className="campo" value={editando.ubicacion} onChange={(e) => setEditando({ ...editando, ubicacion: e.target.value as UbicacionBanner })}>
+              <option value="carrusel">Carrusel principal</option>
+              <option value="promo">Promoción bajo el carrusel</option>
+            </select>
+          </div>
           <div className="sm:col-span-2">
             <label htmlFor="b-titulo" className="etiqueta">Título</label>
             <input id="b-titulo" className="campo" maxLength={120} value={editando.titulo} onChange={(e) => setEditando({ ...editando, titulo: e.target.value })} />
@@ -121,8 +101,8 @@ export default function Banners() {
             <label htmlFor="b-texto" className="etiqueta">Texto (opcional)</label>
             <input id="b-texto" className="campo" maxLength={240} value={editando.texto} onChange={(e) => setEditando({ ...editando, texto: e.target.value })} />
           </div>
-          <CampoImagen etiqueta="Imagen de escritorio" valor={editando.imagen} alCambiar={(v) => setEditando((b) => (b ? { ...b, imagen: v } : b))} dataId="escritorio" />
-          <CampoImagen etiqueta="Imagen de celular" opcional valor={editando.imagenMovil} alCambiar={(v) => setEditando((b) => (b ? { ...b, imagenMovil: v } : b))} dataId="movil" />
+          <CampoImagen etiqueta={editando.ubicacion === "promo" ? "Imagen" : "Imagen de escritorio"} valor={editando.imagen} alCambiar={(v) => setEditando((b) => (b ? { ...b, imagen: v } : b))} dataId="escritorio" />
+          {editando.ubicacion === "carrusel" && <CampoImagen etiqueta="Imagen de celular" opcional valor={editando.imagenMovil} alCambiar={(v) => setEditando((b) => (b ? { ...b, imagenMovil: v } : b))} dataId="movil" />}
           <div>
             <label htmlFor="b-boton" className="etiqueta">Texto del botón</label>
             <input id="b-boton" className="campo" maxLength={40} value={editando.botonTexto} onChange={(e) => setEditando({ ...editando, botonTexto: e.target.value })} />
@@ -156,7 +136,7 @@ export default function Banners() {
             <div className="min-w-0 flex-1">
               <p className="truncate font-semibold text-tinta">{b.titulo}</p>
               <p className="truncate text-sm">
-                Orden {b.orden} · {b.enlace || "sin botón"}
+                {b.ubicacion === "promo" ? "Promoción" : "Carrusel"} · orden {b.orden} · {b.enlace || "sin botón"}
                 {!b.activo && <span className="ml-2 rounded bg-linea px-1.5 py-0.5 text-xs font-semibold">Oculto</span>}
               </p>
             </div>

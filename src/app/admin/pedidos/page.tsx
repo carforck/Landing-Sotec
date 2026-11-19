@@ -7,7 +7,7 @@ import { useTienda } from "@/components/Proveedor";
 import { subtotal } from "@/lib/carrito";
 import { ErrorDatos } from "@/lib/datos";
 import { fechaCorta, formatoCOP, textoPrecio } from "@/lib/formato";
-import { ESTADOS_PEDIDO, ETIQUETA_ESTADO, type EstadoPedido, type Pedido } from "@/lib/tipos";
+import { ESTADOS_PEDIDO, ETIQUETA_ESTADO, ETIQUETA_SEGMENTO, type EstadoPedido, type Pedido } from "@/lib/tipos";
 import { enlaceWhatsApp } from "@/lib/whatsapp";
 
 const COLOR: Record<EstadoPedido, string> = {
@@ -62,6 +62,7 @@ export default function Pedidos() {
               <summary className="flex min-h-[44px] cursor-pointer flex-wrap items-center justify-between gap-2 p-4">
                 <span>
                   <strong className="text-tinta">{p.codigo}</strong> · {p.cliente.nombre} · {p.cliente.ciudad}
+                  {p.cliente.segmento && <span className="ml-2 rounded-full bg-fondo px-2 py-0.5 text-xs font-semibold text-tinta" data-segmento-pedido>{ETIQUETA_SEGMENTO[p.cliente.segmento]}</span>}
                   <span className="block text-xs">{fechaCorta(p.creado)} · {p.items.length} producto(s)</span>
                 </span>
                 <span className="flex items-center gap-2">
@@ -78,17 +79,20 @@ export default function Pedidos() {
                     <tbody>
                       {p.items.map((it) => (
                         <tr key={it.productoId} className="border-t border-linea">
-                          <td className="py-1.5 text-tinta">{it.nombre}</td>
+                          <td className="py-1.5 text-tinta">
+                            {it.tipo === "servicio" && <span className="mr-1 rounded bg-violet-700 px-1 text-[11px] font-bold text-white">Servicio</span>}
+                            {it.nombre}{it.modalidad ? ` (${it.modalidad})` : ""}
+                          </td>
                           <td>{it.cantidad}</td>
-                          <td>{textoPrecio(it.precio)}</td>
-                          <td className="text-right">{subtotal(it) == null ? "A cotizar" : formatoCOP(subtotal(it) ?? 0)}</td>
+                          <td>{textoPrecio(it.precio, it.tipo)}</td>
+                          <td className="text-right">{subtotal(it) != null ? formatoCOP(subtotal(it) ?? 0) : it.tipo === "servicio" ? "Se cotiza" : "A cotizar"}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
                 <p>
-                  <strong className="text-tinta">Cliente:</strong> {p.cliente.nombre} · {p.cliente.celular} · {p.cliente.ciudad}
+                  <strong className="text-tinta">Cliente:</strong> {p.cliente.nombre}{p.cliente.empresa ? ` (${p.cliente.empresa})` : ""} · {p.cliente.celular} · {p.cliente.ciudad}
                   {p.cliente.correo && ` · ${p.cliente.correo}`}
                 </p>
                 {p.cliente.nota && <p><strong className="text-tinta">Nota:</strong> {p.cliente.nota}</p>}

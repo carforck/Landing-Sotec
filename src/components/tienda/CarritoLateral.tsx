@@ -8,13 +8,13 @@ import { Minus, Plus, Send, ShoppingCart, Trash2, X } from "lucide-react";
 import { useTienda } from "@/components/Proveedor";
 import { resumen, subtotal } from "@/lib/carrito";
 import { formatoCOP, textoPrecio } from "@/lib/formato";
-import { urlImagen } from "@/lib/rutas";
+import { ImagenProducto } from "@/components/tienda/ImagenProducto";
 
 const ENFOCABLES = 'a[href], button:not([disabled]), input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])';
 
 /** Carrito en panel lateral: foco atrapado, Escape cierra y el foco vuelve al botón del encabezado. */
 export function CarritoLateral() {
-  const { carritoAbierto, cerrarCarrito, carrito, cambiarCantidad, quitar } = useTienda();
+  const { carritoAbierto, cerrarCarrito, carrito, cambiarCantidad, quitar, productos } = useTienda();
   const panel = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const r = resumen(carrito);
@@ -78,10 +78,13 @@ export function CarritoLateral() {
               const sub = subtotal(it);
               return (
                 <li key={it.productoId} className="flex gap-3 py-3" data-item-lateral={it.productoId}>
-                  <img src={urlImagen(it.imagen)} alt="" className="h-16 w-16 shrink-0 rounded-lg object-cover" />
+                  <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg">
+                    <ImagenProducto src={it.imagen} categoriaId={productos.find((p) => p.id === it.productoId)?.categoriaId} />
+                  </div>
                   <div className="min-w-0 flex-1">
+                    {it.tipo === "servicio" && <span className="inline-block rounded bg-violet-700 px-1.5 text-[11px] font-bold text-white">Servicio</span>}
                     <p className="text-sm font-semibold leading-snug text-tinta">{it.nombre}</p>
-                    <p className="text-xs">{textoPrecio(it.precio)}{it.precio != null && " c/u"}</p>
+                    <p className="text-xs">{textoPrecio(it.precio, it.tipo)}{it.tipo !== "servicio" && it.precio != null && " c/u"}</p>
                     <div className="mt-1 flex items-center justify-between gap-2">
                       <div className="flex items-center rounded-lg border border-linea" role="group" aria-label={`Cantidad de ${it.nombre}`}>
                         <button type="button" className="flex h-11 w-11 items-center justify-center" onClick={() => cambiarCantidad(it.productoId, it.cantidad - 1)} aria-label="Menos">
@@ -92,7 +95,7 @@ export function CarritoLateral() {
                           <Plus className="h-4 w-4" aria-hidden />
                         </button>
                       </div>
-                      <span className="text-sm font-bold text-tinta">{sub == null ? "A cotizar" : formatoCOP(sub)}</span>
+                      <span className="text-sm font-bold text-tinta">{sub != null ? formatoCOP(sub) : it.tipo === "servicio" ? "Se cotiza" : "A cotizar"}</span>
                       <button type="button" className="flex h-11 w-11 items-center justify-center text-tenue hover:text-red-700" onClick={() => quitar(it.productoId)} aria-label={`Quitar ${it.nombre}`}>
                         <Trash2 className="h-4 w-4" aria-hidden />
                       </button>
@@ -112,10 +115,14 @@ export function CarritoLateral() {
         {carrito.length > 0 && (
           <div className="space-y-2 border-t border-linea p-4">
             <div className="flex items-baseline justify-between">
-              <span className="font-semibold text-tinta">Total</span>
+              <span className="font-semibold text-tinta">Total productos</span>
               <span className="text-2xl font-extrabold text-tinta" data-total-lateral>{formatoCOP(r.total)}</span>
             </div>
-            {r.aCotizar > 0 && <p className="text-xs">+ {r.aCotizar} producto{r.aCotizar === 1 ? "" : "s"} a cotizar (te enviamos el valor por WhatsApp).</p>}
+            {(r.aCotizar > 0 || r.servicios > 0) && (
+              <p className="text-xs">
+                {[r.aCotizar > 0 && `${r.aCotizar} producto${r.aCotizar === 1 ? "" : "s"} a cotizar`, r.servicios > 0 && `${r.servicios} servicio${r.servicios === 1 ? "" : "s"}`].filter(Boolean).join(" y ")} fuera del total: te enviamos su valor por WhatsApp.
+              </p>
+            )}
             <button
               type="button"
               className="btn-primario w-full text-base"

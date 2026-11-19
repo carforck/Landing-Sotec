@@ -29,7 +29,7 @@ export function CarruselProductos({ id, titulo, productos, verTodo, nombreCat }:
           </button>
         </div>
       </div>
-      <ul ref={pista} className="-mx-4 mt-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto scroll-smooth px-4 pb-3 sm:-mx-6 sm:scroll-px-6 sm:gap-4 sm:px-6 lg:mx-0 lg:scroll-px-0 lg:px-0" aria-label={titulo}>
+      <ul ref={pista} className="relative -mx-4 mt-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto scroll-smooth px-4 pb-3 sm:-mx-6 sm:scroll-px-6 sm:gap-4 sm:px-6 lg:mx-0 lg:scroll-px-0 lg:px-0" aria-label={titulo}>
         {productos.map((p) => (
           <li key={p.id} className="w-[44%] shrink-0 snap-start sm:w-[30%] lg:w-[calc((100%-3rem)/4)] 2xl:w-[calc((100%-4rem)/5)]">
             <TarjetaProducto producto={p} categoria={nombreCat.get(p.categoriaId)} />

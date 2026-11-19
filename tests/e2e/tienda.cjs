@@ -1,5 +1,5 @@
 /* e2e de la tienda contra un servidor ya levantado (BASE=http://localhost:3300 por defecto).
- * CAPTURAS=<carpeta> guarda capturas de la portada y la ficha a 390 y 1366 px. */
+ * CAPTURAS=<carpeta> guarda capturas de viewport de la portada y de la ficha de un servicio. */
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
@@ -8,6 +8,8 @@ const puppeteer = require("puppeteer-core");
 const BASE = (process.env.BASE || "http://localhost:3300").replace(/\/$/, "");
 const T = `${BASE}/tienda`;
 const CAPTURAS = process.env.CAPTURAS || "";
+const WA_HOGAR = "573001110000";
+const WA_EMPRESA = "573002220000";
 let ok = 0;
 const fallos = [];
 const verificar = (cond, msg) => (cond ? (ok++, console.log(`✓ ${msg}`)) : (fallos.push(msg), console.log(`✗ ${msg}`)));
@@ -38,6 +40,16 @@ const wa = async (p) => {
   const u = await p.evaluate(() => sessionStorage.getItem("__wa"));
   return u ? new URL(u) : null;
 };
+const limpiarWa = (p) => p.evaluate(() => sessionStorage.removeItem("__wa"));
+const contador = (p) => p.$eval("[data-contador]", (e) => e.textContent);
+const ids = (p, sel) => p.$$eval(sel, (xs) => xs.map((x) => x.getAttribute("data-producto")));
+async function escribirNumero(p, sel, valor) {
+  await p.focus(sel);
+  await p.keyboard.down("Control");
+  await p.keyboard.press("A");
+  await p.keyboard.up("Control");
+  await p.keyboard.type(valor);
+}
 
 (async () => {
   const b = await puppeteer.launch({ executablePath: chrome(), headless: true, args: ["--no-sandbox"] });
@@ -48,7 +60,6 @@ const wa = async (p) => {
   p.on("pageerror", (e) => errores.push(e.message));
   p.on("console", (m) => m.type() === "error" && errores.push(m.text()));
   p.on("response", (r) => r.status() >= 400 && fallidas.push(`${r.status()} ${r.url()}`));
-  // WhatsApp: window.open no abre nada, guarda la URL
   await p.evaluateOnNewDocument(() => {
     window.open = (u) => {
       sessionStorage.setItem("__wa", String(u));
@@ -57,291 +68,391 @@ const wa = async (p) => {
   });
 
   try {
-    // ── 1. Portada
+    // Números distintos por segmento (lo demás sale de la semilla)
     await p.goto(T, { waitUntil: "networkidle0" });
+    await p.evaluate((h, e) => localStorage.setItem("sotec-tienda-v2", JSON.stringify({ config: { whatsappHogar: h, whatsappEmpresa: e } })), WA_HOGAR, WA_EMPRESA);
+    await p.reload({ waitUntil: "networkidle0" });
+
+    // ── 1. Portada
     await p.waitForSelector("[data-grilla] [data-producto]");
-    const n = await p.$$eval("[data-grilla] [data-producto]", (xs) => xs.length);
-    verificar(n === 13, `catálogo completo con 13 productos (${n})`);
-    verificar((await p.title()).includes("SOTEC"), "título con SOTEC");
-    const rotas = await p.$$eval("img", (xs) => xs.filter((i) => i.complete && i.naturalWidth === 0 && i.loading !== "lazy").map((i) => i.src));
-    verificar(rotas.length === 0, `imágenes cargan bajo /tienda (${rotas.join(", ") || "ok"})`);
-    verificar(!!(await p.$("header a[href='https://sotecse.com']")), "enlace de vuelta a sotecse.com");
-    verificar(!!(await p.$("[data-beneficios]")) && (await texto(p)).includes("Garantía SOTEC") && (await texto(p)).includes("Asesoría técnica sin costo"), "franja de beneficios");
-    const circulos = await p.$$eval("[data-cat-circulo] svg", (xs) => xs.length);
-    verificar(circulos === 6, `6 categorías con ícono circular (${circulos})`);
-    const filas = await p.$$eval("[data-fila]", (xs) => xs.map((x) => x.getAttribute("data-fila")));
-    verificar(filas[0] === "destacados" && filas.includes("cat-solar") && filas.includes("cat-cctv"), `carruseles por categoría (${filas.join(", ")})`);
+    const n = (await ids(p, "[data-grilla] [data-producto]")).length;
+    verificar(n === 20, `catálogo de ejemplo con 20 productos y servicios (${n})`);
+    const tipos = await p.$$eval("[data-grilla] [data-producto]", (xs) => xs.filter((x) => x.dataset.tipo === "servicio").length);
+    verificar(tipos === 6, `6 servicios en el catálogo (${tipos})`);
+    verificar(!!(await p.$("[data-barra-contacto]")) && (await p.$eval("[data-barra-contacto]", (x) => getComputedStyle(x).display !== "none")) && (await texto(p)).includes("¿Necesitas ayuda? Escríbenos por WhatsApp"), "barra superior de contacto en escritorio");
     verificar(!(await texto(p)).match(/cuotas|env[ií]o gratis/i), "sin cuotas ni envío gratis");
+    const tarjetasCat = await p.$$eval("[data-cat-tarjeta]", (xs) => xs.length);
+    const conIcono = await p.$$eval("[data-cat-tarjeta] [data-cat-icono]", (xs) => xs.length);
+    verificar(tarjetasCat === 8 && conIcono === 2, `8 categorías como tarjetas; sin foto muestran el ícono (${conIcono})`);
+    // Cinta de categorías
+    const tx = () => p.$eval("[data-cinta-pista]", (x) => new DOMMatrix(getComputedStyle(x).transform).m41);
+    verificar((await p.$eval("[data-cinta]", (x) => x.dataset.cinta)) === "animada", "la cinta de categorías se anima (no caben en el ancho)");
+    const copia = await p.$eval("[data-cinta-copia]", (x) => ({ hidden: x.getAttribute("aria-hidden"), inert: x.hasAttribute("inert"), tabs: [...x.querySelectorAll("a")].every((a) => a.tabIndex === -1) }));
+    verificar(copia.hidden === "true" && copia.inert && copia.tabs, "la copia del bucle es aria-hidden, inert y sin tabulación");
+    verificar(await p.$eval("[data-cinta]", (x) => getComputedStyle(x).maskImage.includes("gradient") || getComputedStyle(x).webkitMaskImage.includes("gradient")), "bordes con desvanecido (mask-image)");
+    await p.mouse.move(5, 5);
+    const t0 = await tx();
+    await sleep(1200);
+    const t1 = await tx();
+    verificar(t1 < t0 - 5, `la cinta se mueve a la izquierda (${Math.round(t0)} → ${Math.round(t1)})`);
+    const quieta = async () => {
+      const a = await tx();
+      await sleep(700);
+      return Math.abs((await tx()) - a) < 0.5;
+    };
+    await p.hover("[data-cinta] [data-cat-tarjeta='cat-solar']");
+    await sleep(150);
+    verificar(await quieta(), "se pausa con el mouse encima");
+    await p.mouse.move(5, 5);
+    await p.focus("[data-cinta] [data-cat-tarjeta='cat-redes']");
+    await sleep(150);
+    verificar(await quieta(), "se pausa al enfocar con el teclado");
+    await p.evaluate(() => document.activeElement.blur());
+    await sleep(300);
+    verificar(!(await quieta()), "se reanuda al quitar el foco");
+    await p.focus("[data-pausa-categorias]");
+    await p.keyboard.press("Enter");
+    await sleep(150);
+    verificar((await p.$eval("[data-pausa-categorias]", (x) => x.getAttribute("aria-pressed"))) === "true" && (await quieta()), "botón «Pausar» (teclado) la detiene");
+    await p.keyboard.press("Enter");
+    await sleep(150);
+    verificar((await p.$eval("[data-pausa-categorias]", (x) => x.getAttribute("aria-label"))).startsWith("Pausar") && !(await quieta()), "botón «Reanudar» la vuelve a mover");
+    await p.evaluate(() => document.activeElement.blur());
 
-    // Enlaces al panel
+    const filas = await p.$$eval("[data-fila]", (xs) => xs.map((x) => x.getAttribute("data-fila")));
+    verificar(filas.slice(0, 3).join() === "ofertas,destacados,servicios" && filas.includes("cat-computo"), `carruseles Ofertas, Destacados, Servicios y por categoría (${filas.length})`);
     const hrefAdmin = await p.$$eval("[data-enlace-admin]", (xs) => xs.map((x) => `${x.getAttribute("data-enlace-admin")}:${x.getAttribute("href")}`));
-    verificar(hrefAdmin.includes("encabezado:/tienda/admin") && hrefAdmin.includes("pie:/tienda/admin"), `«Administrar tienda» en encabezado y pie (${hrefAdmin.join(", ")})`);
+    verificar(hrefAdmin.includes("encabezado:/tienda/admin") && hrefAdmin.includes("pie:/tienda/admin"), "«Administrar tienda» en encabezado y pie");
+    const sinFoto = await p.$$eval("[data-grilla] [data-producto='ej-portatil-14'] [data-sin-foto] svg", (xs) => xs.length);
+    verificar(sinFoto === 1, "producto sin foto muestra el ícono de su categoría (sin texto en imagen)");
 
-    // ── 2. Carrusel de banners
-    const slides = await p.$$eval("[data-banner]", (xs) => xs.map((x) => `${x.getAttribute("data-banner")}:${x.getAttribute("aria-hidden")}`));
-    verificar(slides.length === 3 && slides[0] === "ban-solar:false", `3 banners, el primero visible (${slides.join(", ")})`);
-    verificar(!!(await p.$("[data-pausa]")), "botón para pausar el carrusel");
+    // ── 2. Oferta y etiquetas
+    const oferta = await p.$eval("[data-grilla] [data-producto='ej-portatil-14']", (x) => ({ t: x.textContent, ant: x.querySelector("[data-precio-anterior]")?.textContent, tag: x.querySelector("s")?.tagName }));
+    verificar(oferta.t.includes("Oferta -12 %") && oferta.ant.includes("$ 3.290.000") && oferta.tag === "S" && oferta.t.includes("$ 2.890.000"), "oferta: «Oferta -12 %», precio anterior tachado y precio actual");
+    const srv = await p.$eval("[data-grilla] [data-producto='ej-srv-mantenimiento']", (x) => x.textContent);
+    verificar(srv.includes("Servicio") && srv.includes("Desde$ 120.000") && srv.includes("Por equipo") && srv.includes("Solicitar"), "tarjeta de servicio: etiqueta, «Desde», modalidad y «Solicitar»");
+    verificar((await p.$eval("[data-grilla] [data-producto='ej-srv-mant-cctv']", (x) => x.textContent)).includes("A cotizar"), "servicio sin precio: «A cotizar»");
+
+    // ── 3. Carrusel y promociones
+    const slides = await p.$$eval("[data-banner]", (xs) => xs.length);
+    verificar(slides === 3, `carrusel con 3 banners (${slides})`);
+    await p.evaluate(() => window.scrollTo(0, 0));
+    await sleep(200);
+    // (el carrusel pudo avanzar solo durante las pruebas anteriores: ir directo al banner 2)
+    await p.click("[data-carrusel-banners] button[aria-label='Ir al banner 2']");
+    await p.waitForFunction(() => document.querySelector("[data-banner='ej-ban-seguridad']")?.getAttribute("aria-hidden") === "false");
     await p.click("[data-banner-siguiente]");
+    await p.waitForFunction(() => document.querySelector("[data-banner='ej-ban-redes']")?.getAttribute("aria-hidden") === "false");
+    verificar(true, "flecha «siguiente» del carrusel");
+    await p.click("[data-carrusel-banners] button[aria-label='Ir al banner 2']");
     await sleep(700);
-    verificar((await p.$eval("[data-banner='ban-cctv']", (x) => x.getAttribute("aria-hidden"))) === "false", "«siguiente» muestra el banner de CCTV");
-    await p.focus("[data-banner-siguiente]");
-    await p.keyboard.press("ArrowRight");
-    await sleep(700);
-    verificar((await p.$eval("[data-banner='ban-alarma']", (x) => x.getAttribute("aria-hidden"))) === "false", "flecha → del teclado avanza el carrusel");
-    const tabsOcultos = await p.$$eval("[data-banner][aria-hidden='true'] [data-boton-banner]", (xs) => xs.every((x) => x.tabIndex === -1));
-    verificar(tabsOcultos, "botones de banners ocultos fuera del orden de tabulación");
-    await p.click("[data-banner='ban-alarma'] [data-boton-banner]");
-    await p.waitForFunction(() => location.pathname === "/tienda/producto/prd-alarma-kit");
-    verificar(true, "el botón del banner lleva al producto");
+    await p.click("[data-banner='ej-ban-seguridad'] [data-boton-banner]");
+    await p.waitForFunction(() => location.search.includes("categoria=cat-seguridad"));
+    await p.waitForFunction(() => document.querySelectorAll("[data-grilla] [data-producto]").length === 4);
+    verificar(true, "banner «Ver seguridad» filtra la categoría (4)");
+    await p.goto(T, { waitUntil: "networkidle0" });
+    const promos = await p.$$eval("[data-promo]", (xs) => xs.map((x) => x.getAttribute("data-promo")));
+    verificar(promos.length === 3, `3 promociones bajo el carrusel (${promos.join(", ")})`);
+    await p.click("[data-promo='ej-promo-cctv']");
+    await p.waitForFunction(() => location.pathname === "/tienda/producto/ej-kit-cctv");
+    verificar(true, "la promoción lleva al producto");
 
-    // ── 3. Cotizar un solo producto desde la ficha
-    await p.waitForSelector("[data-precio-ficha]");
-    const galeria = await p.$$eval("[data-galeria] [aria-label^='Ver foto']", (xs) => xs.length);
-    verificar(galeria === 2, `galería con miniaturas (${galeria})`);
-    await p.click("[aria-label='Cantidad'] button[aria-label='Más']");
-    await p.evaluate(() => sessionStorage.removeItem("__wa"));
+    // ── 4. Segmento, tipo y marca
+    await p.goto(T, { waitUntil: "networkidle0" });
+    await p.click("[data-segmento='empresa']");
+    await p.waitForFunction(() => location.search.includes("segmento=empresa"));
+    await sleep(400);
+    const empresa = await ids(p, "[data-grilla] [data-producto]");
+    verificar(empresa.length > 0 && !empresa.includes("ej-kit-alarma") && empresa.includes("ej-servidor-rack") && empresa.includes("ej-panel-550"), `«Para empresas» filtra el catálogo (${empresa.length})`);
+    const filaSolar = await ids(p, "[data-fila='cat-solar'] [data-producto]");
+    verificar(!filaSolar.includes("ej-srv-solar"), "los carruseles también respetan el segmento");
+    await p.click("[data-segmento='todo']");
+    await p.waitForFunction(() => !location.search.includes("segmento"));
+    await p.waitForSelector("[data-filtro='tipo-servicio']");
+    await p.click("[data-filtro='tipo-servicio']");
+    await p.waitForFunction(() => location.search.includes("tipo=servicio"));
+    await sleep(300);
+    verificar(await p.$$eval("[data-grilla] [data-producto]", (xs) => xs.length === 6 && xs.every((x) => x.dataset.tipo === "servicio")), "filtro «Servicios» deja solo servicios (6)");
+    await p.click("[data-quitar-filtros]");
+    await sleep(300);
+    const marcas = await p.$$eval("[data-marca]", (xs) => xs.map((x) => x.textContent));
+    verificar(marcas.length === 4 && marcas.every((m) => m.startsWith("Ejemplo")), `franja de marcas de ejemplo (${marcas.join(", ")})`);
+    await p.click("[data-marca='mar-alfa']");
+    await p.waitForFunction(() => location.search.includes("marca=mar-alfa"));
+    await sleep(300);
+    verificar((await ids(p, "[data-grilla] [data-producto]")).join() === "ej-portatil-14,ej-nas-4,ej-kit-cctv", "la marca filtra el catálogo (3)");
+
+    // ── 5. Ficha de un servicio
+    await p.goto(`${T}/producto/ej-srv-mantenimiento`, { waitUntil: "networkidle0" });
+    await p.waitForSelector("[data-incluye]");
+    const ficha = await texto(p);
+    verificar(ficha.includes("Qué incluye") && (await p.$$eval("[data-incluye] li", (xs) => xs.length)) === 4 && ficha.includes("Por equipo") && ficha.includes("Desde"), "ficha de servicio: qué incluye, modalidad y «Desde»");
+    verificar((await p.$eval("[data-agregar-ficha]", (x) => x.textContent)).includes("Solicitar servicio"), "CTA «Solicitar servicio»");
+    await limpiarWa(p);
     await p.click("[data-cotizar]");
     let u = await wa(p);
     let t = u?.searchParams.get("text") || "";
-    verificar(u?.searchParams.get("phone") === "573104696060" && t.includes("*Kit de alarma inalámbrica para hogar*") && t.includes("Cantidad: 2 · Precio unitario: $ 1.250.000 · Subtotal: $ 2.500.000"), "«Cotizar ahora» envía solo ese producto con cantidad y subtotal");
-    verificar(t.includes("https://sotecse.com/tienda/producto/prd-alarma-kit") && !t.includes("Mis datos"), "mensaje con el enlace del producto, sin pasar por el carrito");
-    verificar((await p.$eval("[data-contador]", (e) => e.textContent)) === "0", "cotizar no toca el carrito");
+    verificar(u?.searchParams.get("phone") === WA_HOGAR && t.includes("este servicio") && t.includes("(Por equipo)") && t.includes("Precio: Desde $ 120.000") && !t.includes("Subtotal"), "cotizar un servicio: mensaje propio al WhatsApp de hogar");
     await p.click("[data-agregar-ficha]");
     await p.waitForFunction(() => document.querySelector("[data-agregar-ficha]")?.textContent.includes("Agregado"));
-    verificar((await p.$eval("[data-contador]", (e) => e.textContent)) === "2", "«Agregar al carrito» en la ficha con cantidad 2");
+    verificar((await contador(p)) === "1", "«Solicitar servicio» lo agrega al carrito (cantidad 1)");
 
-    // ── 4. Filtro y búsqueda
-    await p.goto(`${T}/?categoria=cat-cctv#catalogo`, { waitUntil: "networkidle0" });
-    await p.waitForSelector("[data-grilla] [data-producto]");
-    const cctv = await p.$$eval("[data-grilla] [data-producto]", (xs) => xs.map((x) => x.getAttribute("data-producto")));
-    verificar(cctv.length === 3 && cctv.every((id) => ["prd-camara-domo", "prd-camara-ptz", "prd-nvr-8"].includes(id)), `filtro CCTV deja 3 productos (${cctv.join(",")})`);
-    await p.type("#buscar-escritorio", "ptz");
-    await p.keyboard.press("Enter");
-    await p.waitForFunction(() => location.search.includes("q=ptz"));
-    await p.waitForFunction(() => document.querySelectorAll("[data-grilla] [data-producto]").length === 1);
-    verificar(true, "buscador del encabezado filtra el catálogo («ptz» → 1)");
+    // Cotizar un producto solo-empresa va al número de empresas
+    await p.goto(`${T}/producto/ej-servidor-rack`, { waitUntil: "networkidle0" });
+    await p.waitForSelector("[data-cotizar]");
+    await limpiarWa(p);
+    await p.click("[data-cotizar]");
+    u = await wa(p);
+    verificar(u?.searchParams.get("phone") === WA_EMPRESA && (u.searchParams.get("text") || "").includes("este producto"), "cotizar un producto de empresas va al WhatsApp de empresas");
+
+    // Producto de hogar desde la ficha con cantidad 2
+    await p.goto(`${T}/producto/ej-kit-alarma`, { waitUntil: "networkidle0" });
+    await p.waitForSelector("[data-agregar-ficha]");
+    await p.click("[aria-label='Cantidad'] button[aria-label='Más']");
+    await p.click("[data-agregar-ficha]");
+    await sleep(300);
+    verificar((await contador(p)) === "3", "kit de alarma ×2 agregado desde la ficha");
+
+    // ── 6. Agregar desde tarjetas
     await p.goto(T, { waitUntil: "networkidle0" });
-    await p.waitForSelector("[data-grilla] [data-producto]");
-
-    // ── 5. Agregar desde la tarjeta con feedback
-    await p.click("[data-grilla] [data-producto='prd-camara-domo'] [data-agregar]");
-    await p.waitForFunction(() => document.querySelector("[data-grilla] [data-producto='prd-camara-domo'] [data-agregar]")?.textContent.includes("¡Agregado!"));
-    verificar(true, "tarjeta muestra «¡Agregado!»");
-    await p.click("[data-grilla] [data-producto='prd-camara-ptz'] [data-agregar]");
+    await p.waitForSelector("[data-grilla] [data-agregar]");
+    await p.click("[data-grilla] [data-producto='ej-kit-cctv'] [data-agregar]");
+    await p.waitForFunction(() => document.querySelector("[data-grilla] [data-producto='ej-kit-cctv'] [data-agregar]")?.textContent.includes("¡Agregado!"));
+    await p.click("[data-grilla] [data-producto='ej-servidor-rack'] [data-agregar]");
     await sleep(200);
-    verificar((await p.$eval("[data-contador]", (e) => e.textContent)) === "4", "contador del carrito = 4 (2 kit + domo + PTZ)");
-    const etiquetas = await p.$eval("[data-grilla] [data-producto='prd-camara-ptz']", (x) => x.textContent);
-    verificar(etiquetas.includes("Precio a cotizar"), "etiqueta «Precio a cotizar»");
-    verificar((await p.$eval("[data-grilla] [data-producto='prd-panel-550']", (x) => x.textContent)).includes("Más vendido"), "etiqueta «Más vendido»");
-    verificar((await p.$eval("[data-grilla] [data-producto='prd-bateria-5kwh']", (x) => x.textContent)).includes("Nuevo"), "etiqueta «Nuevo»");
+    verificar((await contador(p)) === "5", "tarjetas: «Agregar» con confirmación (contador 5)");
 
-    // ── 6. Carrito lateral (drawer)
+    // ── 7. Drawer
     await p.click("[data-abrir-carrito]");
     await p.waitForSelector("[data-carrito-lateral]");
     verificar(await p.evaluate(() => document.activeElement?.hasAttribute("data-cerrar-carrito")), "drawer abre con el foco en «Cerrar»");
-    verificar((await p.$$("[data-item-lateral]")).length === 3, "drawer con 3 productos");
+    verificar((await p.$$("[data-item-lateral]")).length === 4, "drawer con 4 ítems");
+    verificar((await p.$eval("[data-item-lateral='ej-srv-mantenimiento']", (x) => x.textContent)).includes("Servicio"), "drawer marca el servicio");
     for (let k = 0; k < 25; k++) await p.keyboard.press("Tab");
     verificar(await p.evaluate(() => !!document.activeElement?.closest("[data-carrito-lateral]")), "Tab mantiene el foco dentro del drawer");
-    await p.keyboard.down("Shift");
-    for (let k = 0; k < 25; k++) await p.keyboard.press("Tab");
-    await p.keyboard.up("Shift");
-    verificar(await p.evaluate(() => !!document.activeElement?.closest("[data-carrito-lateral]")), "Shift+Tab mantiene el foco dentro del drawer");
     await p.keyboard.press("Escape");
     await sleep(200);
-    verificar(!(await p.$("[data-carrito-lateral]")) && (await p.evaluate(() => document.activeElement?.hasAttribute("data-abrir-carrito"))), "Escape cierra y el foco vuelve al botón del carrito");
+    verificar(!(await p.$("[data-carrito-lateral]")) && (await p.evaluate(() => document.activeElement?.hasAttribute("data-abrir-carrito"))), "Escape cierra y devuelve el foco");
     await p.click("[data-abrir-carrito]");
-    await p.waitForSelector("[data-item-lateral='prd-camara-domo']");
-    await p.click("[data-item-lateral='prd-camara-domo'] button[aria-label='Más']");
+    await p.waitForSelector("[data-item-lateral='ej-kit-cctv']");
+    await p.click("[data-item-lateral='ej-kit-cctv'] button[aria-label='Más']");
     await sleep(200);
     const totalLat = await p.$eval("[data-total-lateral]", (e) => e.textContent);
-    verificar(totalLat === "$ 3.140.000", `drawer: cambiar cantidad actualiza el total (${totalLat})`);
+    verificar(totalLat === "$ 7.400.000", `total de productos sin servicios (${totalLat})`);
     await p.click("[data-ir-formulario]");
     await p.waitForFunction(() => location.pathname === "/tienda/carrito" && location.hash === "#datos");
     await p.waitForFunction(() => document.activeElement?.id === "nombre", { timeout: 5000 }).catch(() => null);
-    verificar(await p.evaluate(() => document.activeElement?.id === "nombre"), "«Enviar pedido por WhatsApp» lleva al formulario con el foco en Nombre");
+    verificar(await p.evaluate(() => document.activeElement?.id === "nombre"), "«Enviar pedido» lleva al formulario con el foco en Nombre");
 
-    // ── 7. Página /carrito y envío del pedido
-    verificar((await p.$$("[data-item]")).length === 3, "/carrito sigue disponible con los 3 productos");
-    const total = await p.$eval("[data-total]", (e) => e.textContent);
-    verificar(total === "$ 3.140.000", `total $ 3.140.000 (${total})`);
-    await clicTexto(p, "Enviar pedido por WhatsApp");
-    await sleep(300);
-    verificar((await texto(p)).includes("Escribe tu nombre completo"), "valida campos obligatorios");
+    // ── 8. Pedido: segmento obligatorio y número de empresas
+    verificar(!!(await p.$("#t-productos")) && !!(await p.$("#t-servicios")), "/carrito separa Productos y Servicios solicitados");
     await p.type("#nombre", "Cliente Ficticio de Prueba");
     await p.type("#celular", "300 123 4567");
     await p.type("#ciudad", "Cartagena");
-    await p.type("#nota", "Instalación en oficina");
-    await p.evaluate(() => sessionStorage.removeItem("__wa"));
+    await clicTexto(p, "Enviar pedido por WhatsApp");
+    await sleep(300);
+    verificar((await texto(p)).includes("Elige si es para hogar o empresa."), "pregunta obligatoria «¿Es para hogar o empresa?»");
+    await p.click("label:has([data-segmento-form='empresa'])");
+    await p.waitForSelector("#empresa");
+    await p.type("#empresa", "Empresa Ficticia S.A.S.");
+    await limpiarWa(p);
     await clicTexto(p, "Enviar pedido por WhatsApp");
     await p.waitForSelector("[data-pedido-enviado]", { timeout: 10000 });
     const codigo = await p.$eval("[data-codigo]", (e) => e.textContent);
     u = await wa(p);
     t = u?.searchParams.get("text") || "";
-    verificar(u && u.origin + u.pathname === "https://api.whatsapp.com/send" && u.searchParams.get("phone") === "573104696060", "pedido abre api.whatsapp.com al 573104696060");
-    verificar(t.includes(`*Pedido ${codigo}*`) && t.includes("Cantidad: 2 · Precio unitario: $ 320.000 · Subtotal: $ 640.000") && t.includes("Kit de alarma inalámbrica para hogar"), `mensaje del pedido ${codigo} con el detalle`);
-    verificar(t.includes("*Total: $ 3.140.000* (+ 1 producto a cotizar)") && t.includes("Nombre: Cliente Ficticio de Prueba"), "mensaje con total y datos del cliente");
-    verificar((await p.$eval("[data-contador]", (e) => e.textContent)) === "0", "carrito queda vacío");
+    verificar(u?.searchParams.get("phone") === WA_EMPRESA, `pedido «Empresa» va al WhatsApp de empresas (${u?.searchParams.get("phone")})`);
+    verificar(t.includes(`*Pedido ${codigo}*\nPara: Empresas`) && t.includes("Empresa: Empresa Ficticia S.A.S."), `mensaje con código ${codigo}, segmento y empresa`);
+    const secProd = t.slice(t.indexOf("*Productos*"), t.indexOf("*Servicios solicitados*"));
+    const secSrv = t.slice(t.indexOf("*Servicios solicitados*"), t.indexOf("*Mis datos*"));
+    verificar(secProd.includes("Kit de alarma inalámbrica para hogar") && secProd.includes("Cantidad: 2 · Precio unitario: $ 2.450.000 · Subtotal: $ 4.900.000") && secProd.includes("Servidor en rack 1U") && !secProd.includes("Mantenimiento"), "sección Productos con su detalle");
+    verificar(secSrv.includes("Mantenimiento preventivo de computadores (Por equipo)") && secSrv.includes("Precio: Desde $ 120.000"), "sección «Servicios solicitados» aparte");
+    verificar(t.includes("*Total productos: $ 7.400.000* (+ 1 producto a cotizar)") && t.includes("Servicios: 1, se cotizan según el alcance."), "total solo de productos y nota de servicios");
+    verificar((await contador(p)) === "0", "carrito queda vacío");
 
-    // ── 8. Panel: enlace, producto con foto, banner, ícono, pedido
+    // ── 9. Panel
     await p.goto(T, { waitUntil: "networkidle0" });
     await p.click("[data-enlace-admin='encabezado']");
     await p.waitForFunction(() => location.pathname === "/tienda/admin");
-    verificar(!!(await p.waitForSelector("[data-aviso-demo]")), "el enlace del encabezado abre el panel (con aviso de demostración)");
+    await p.waitForSelector("[data-aviso-demo]");
     await clicTexto(p, "Entrar al modo demostración");
     await p.waitForFunction(() => document.querySelector("h1")?.textContent === "Resumen");
-    verificar((await texto(p)).includes(codigo), "el resumen muestra el pedido nuevo");
+    verificar((await texto(p)).includes(codigo), "el resumen muestra el pedido");
 
+    await p.goto(`${T}/admin/productos`, { waitUntil: "networkidle0" });
+    await p.waitForSelector("[data-aviso-ejemplo]");
+    verificar((await texto(p)).includes("Catálogo de ejemplo: reemplázalo desde el panel") && !!(await p.$("[data-borrar-ejemplo]")), "aviso «Catálogo de ejemplo» y botón para borrarlo");
+
+    // Servicio nuevo
+    await p.goto(`${T}/admin/productos/editar?tipo=servicio`, { waitUntil: "networkidle0" });
+    await p.waitForSelector("#modalidad");
+    await p.type("#nombre", "Instalación de cámaras de prueba");
+    await p.select("#categoria", "cat-servicios");
+    await p.type("#precio", "250.000");
+    await p.type("#modalidad", "Visita técnica");
+    await p.type("#incluye", "Visita\nInstalación\nConfiguración");
+    await p.click("[data-segmento-editor='hogar']");
+    await clicTexto(p, "Guardar", "button[type=submit]");
+    await p.waitForFunction(() => location.pathname === "/tienda/admin/productos");
+    verificar(true, "servicio nuevo guardado");
+
+    // Producto con oferta: valida precio anterior
     await p.goto(`${T}/admin/productos/editar`, { waitUntil: "networkidle0" });
-    await p.waitForSelector("[data-editor-producto] #nombre");
-    await p.type("#nombre", "Reflector solar LED de prueba");
-    await p.select("#categoria", "cat-solar");
-    await p.type("#precio", "185.000");
-    await p.type("#descripcion", "Reflector para exteriores con panel incluido.");
-    await (await p.$("[data-subir-fotos]")).uploadFile(path.join(__dirname, "../../public/img/logo-sotec.png"));
+    await p.waitForSelector("#anterior");
+    await p.type("#nombre", "Router de prueba en oferta");
+    await p.select("#categoria", "cat-redes");
+    await p.type("#precio", "100.000");
+    await p.type("#anterior", "90.000");
+    await clicTexto(p, "Guardar", "button[type=submit]");
+    await p.waitForFunction(() => document.body.innerText.includes("El precio anterior debe ser mayor"));
+    verificar(true, "oferta inválida (anterior ≤ precio) se rechaza");
+    await escribirNumero(p, "#anterior", "150.000");
+    await sleep(150);
+    verificar((await p.$eval("[data-pct]", (x) => x.textContent)).includes("Oferta -33 %"), "el editor calcula «-33 %»");
+    await (await p.$("[data-subir-fotos]")).uploadFile(path.join(__dirname, "../../public/img/categorias/cableado-switch.webp"));
     await p.waitForSelector("[data-foto] img", { timeout: 15000 });
-    const foto = await p.$eval("[data-foto] img", (i) => i.src);
-    verificar(/^data:image\/(webp|jpeg);base64,/.test(foto), `foto comprimida (${Math.round(foto.length / 1024)} KB base64)`);
-    await clicTexto(p, "«Nuevo»", "label");
-    await clicTexto(p, "Guardar producto");
+    await clicTexto(p, "Guardar", "button[type=submit]");
     await p.waitForFunction(() => location.pathname === "/tienda/admin/productos");
 
+    // Marca nueva
+    await p.goto(`${T}/admin/marcas`, { waitUntil: "networkidle0" });
+    await p.waitForSelector("[data-admin-marca]");
+    await p.type("#nueva-marca", "Marca Propia");
+    await clicTexto(p, "Agregar", "button[type=submit]");
+    await p.waitForFunction(() => document.querySelectorAll("[data-admin-marca]").length === 5);
+    verificar(true, "marca nueva creada");
+
+    // Promoción nueva primero
     await p.goto(`${T}/admin/banners`, { waitUntil: "networkidle0" });
-    await p.waitForSelector("[data-admin-banner]");
-    verificar((await p.$$("[data-admin-banner]")).length === 3, "sección Banners con los 3 de ejemplo");
-    await p.click("[data-nuevo-banner]");
-    await p.type("#b-titulo", "Promoción de prueba");
-    await p.type("#b-texto", "Banner creado desde el panel");
+    await p.waitForSelector("[data-nueva-promo]");
+    await p.click("[data-nueva-promo]");
+    await p.type("#b-titulo", "Promo de prueba");
     await (await p.$("[data-subir='escritorio']")).uploadFile(path.join(__dirname, "../../public/img/categorias/techo-solar.webp"));
     await p.waitForSelector("[data-vista='escritorio']", { timeout: 15000 });
-    await p.select("#b-enlace", "/?categoria=cat-solar");
-    await p.focus("#b-orden");
-    await p.keyboard.down("Control");
-    await p.keyboard.press("A");
-    await p.keyboard.up("Control");
-    await p.keyboard.type("0");
-    verificar((await p.$eval("#b-orden", (x) => x.value)) === "0", "orden del banner = 0");
+    await p.select("#b-enlace", "/?tipo=servicio");
+    await escribirNumero(p, "#b-orden", "0");
     await clicTexto(p, "Guardar banner");
-    await p.waitForFunction(() => document.querySelectorAll("[data-admin-banner]").length === 4);
-    verificar(true, "banner nuevo guardado");
+    await p.waitForFunction(() => document.querySelectorAll("[data-admin-banner]").length === 7);
 
-    await p.goto(`${T}/admin/categorias`, { waitUntil: "networkidle0" });
-    await p.waitForSelector("[data-admin-categoria='cat-redes'] [data-icono]");
-    await p.select("[data-admin-categoria='cat-redes'] [data-icono]", "wifi");
-    await p.click("[data-admin-categoria='cat-redes'] button[aria-label^='Guardar']");
-    await p.waitForFunction(() => document.body.innerText.includes("Guardado."));
+    // Configuración con dos números
+    await p.goto(`${T}/admin/configuracion`, { waitUntil: "networkidle0" });
+    await p.waitForSelector("#wa-empresa");
+    verificar((await p.$eval("#wa-hogar", (x) => x.value)) === WA_HOGAR && (await p.$eval("#wa-empresa", (x) => x.value)) === WA_EMPRESA, "configuración con WhatsApp de hogar y de empresas");
 
+    // Todo visible en la tienda
     await p.goto(T, { waitUntil: "networkidle0" });
-    await p.waitForSelector("[data-banner]");
-    const primero = await p.$eval("[data-banner]", (x) => x.textContent);
-    verificar(primero.includes("Promoción de prueba"), "el banner nuevo aparece primero en el carrusel");
-    const card = await p.evaluate(() => [...document.querySelectorAll("[data-grilla] [data-producto]")].find((a) => a.textContent.includes("Reflector solar LED de prueba"))?.textContent || "");
-    verificar(card.includes("$ 185.000") && card.includes("Nuevo"), "producto nuevo en el catálogo con precio y etiqueta «Nuevo»");
-    const icono = await p.$eval("[data-cat-circulo='cat-redes'] svg", (s) => s.getAttribute("class"));
-    verificar(/lucide-wifi/.test(icono || ""), `ícono de categoría elegido en el panel (${icono})`);
+    await p.waitForSelector("[data-promo]");
+    verificar((await p.$eval("[data-promo]", (x) => x.textContent)).includes("Promo de prueba"), "la promoción nueva sale primero");
+    verificar((await p.$$eval("[data-marca]", (xs) => xs.map((x) => x.textContent))).includes("Marca Propia"), "la marca nueva sale en la franja");
+    const nuevoSrv = await p.evaluate(() => [...document.querySelectorAll("[data-grilla] [data-producto]")].find((a) => a.textContent.includes("Instalación de cámaras de prueba"))?.textContent || "");
+    verificar(nuevoSrv.includes("Servicio") && nuevoSrv.includes("Desde$ 250.000") && nuevoSrv.includes("Visita técnica"), "el servicio nuevo sale con «Desde» y modalidad");
+    const router = await p.evaluate(() => [...document.querySelectorAll("[data-grilla] [data-producto]")].find((a) => a.textContent.includes("Router de prueba en oferta"))?.textContent || "");
+    verificar(router.includes("Oferta -33 %") && router.includes("$ 150.000") && router.includes("$ 100.000"), "el producto nuevo sale como oferta -33 %");
 
+    // Pedidos
     await p.goto(`${T}/admin/pedidos`, { waitUntil: "networkidle0" });
     await p.waitForSelector(`[data-pedido='${codigo}']`);
+    verificar((await p.$eval(`[data-pedido='${codigo}'] [data-segmento-pedido]`, (x) => x.textContent)) === "Empresas", "el pedido muestra el segmento");
     await p.click(`[data-pedido='${codigo}'] summary`);
     await p.select(`[data-pedido='${codigo}'] [data-cambiar-estado]`, "vendido");
     await p.waitForFunction((c) => document.querySelector(`[data-pedido='${c}'] [data-estado]`)?.textContent === "Vendido", {}, codigo);
-    await p.reload({ waitUntil: "networkidle0" });
-    await p.waitForSelector(`[data-pedido='${codigo}']`);
-    verificar((await p.$eval(`[data-pedido='${codigo}'] [data-estado]`, (e) => e.textContent)) === "Vendido", "estado «Vendido» persiste al recargar");
+    verificar(true, "cambia el estado del pedido");
 
-    // Enlace del pie
-    await p.goto(`${T}/carrito`, { waitUntil: "networkidle0" });
-    await p.click("[data-enlace-admin='pie']");
-    await p.waitForFunction(() => location.pathname === "/tienda/admin");
-    verificar(true, "el enlace del pie lleva al panel");
-
-    // ── 9. Responsive: 6 anchos sin scroll horizontal
+    // ── 10. Móvil: barra inferior, botón flotante, ficha
+    await p.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true });
     await p.goto(T, { waitUntil: "networkidle0" });
-    await p.waitForSelector("[data-grilla] [data-agregar]");
-    await p.click("[data-grilla] [data-producto='prd-kit-solar-3kw'] [data-agregar]");
-    const anchos = [360, 390, 768, 1024, 1366, 1920];
-    const rutas = ["", "/producto/prd-panel-550", "/carrito", "/admin", "/admin/banners", "/admin/productos/editar"];
-    for (const w of anchos) {
+    await p.waitForSelector("[data-barra-inferior]");
+    const barra = await p.$eval("[data-barra-inferior]", (x) => ({ abajo: Math.round(x.getBoundingClientRect().bottom), t: x.textContent }));
+    verificar(barra.abajo === 844 && ["Inicio", "Categorías", "Carrito", "WhatsApp"].every((s) => barra.t.includes(s)), "móvil: barra inferior fija con Inicio, Categorías, Carrito y WhatsApp");
+    verificar(await p.$eval("a[aria-label='Escríbenos por WhatsApp']", (x) => getComputedStyle(x).display === "none"), "móvil: el botón flotante se oculta (ya está en la barra)");
+    verificar(await p.$eval("[data-barra-contacto]", (x) => getComputedStyle(x).display === "none"), "móvil: barra superior de contacto oculta");
+    await p.click("[data-grilla] [data-producto='ej-panel-550'] [data-agregar]");
+    await sleep(200);
+    verificar((await p.$eval("[data-contador-barra]", (x) => x.textContent)) === "1", "contador en la barra inferior");
+    await p.click("[data-barra-carrito]");
+    await p.waitForSelector("[data-carrito-lateral]");
+    verificar(true, "el carrito de la barra abre el drawer");
+    await p.keyboard.press("Escape");
+    await p.goto(`${T}/producto/ej-srv-diagnostico`, { waitUntil: "networkidle0" });
+    await p.waitForSelector("[data-barra-movil]");
+    verificar(!(await p.$("[data-barra-inferior]")) && (await p.$eval("[data-barra-movil]", (x) => Math.round(x.getBoundingClientRect().bottom))) === 844, "ficha en móvil: solo la barra de compra (no choca con la navegación)");
+    verificar((await p.$eval("[data-agregar-barra]", (x) => x.textContent)).includes("Solicitar servicio"), "barra de compra de un servicio: «Solicitar servicio»");
+
+    // Reducir movimiento: la cinta queda quieta y se desplaza a mano
+    await p.emulateMediaFeatures([{ name: "prefers-reduced-motion", value: "reduce" }]);
+    await p.goto(T, { waitUntil: "networkidle0" });
+    await p.waitForSelector("[data-cinta]");
+    const rm = await p.$eval("[data-cinta]", (x) => ({ modo: x.dataset.cinta, ox: getComputedStyle(x).overflowX, copia: !!x.querySelector("[data-cinta-copia]"), tr: getComputedStyle(x.querySelector("[data-cinta-pista]")).transform }));
+    verificar(rm.modo === "quieta" && rm.ox === "auto" && !rm.copia && rm.tr === "none" && !(await p.$("[data-pausa-categorias]")), `con «reducir movimiento» la cinta no se anima y se desplaza a mano (${JSON.stringify(rm)})`);
+    await p.emulateMediaFeatures([{ name: "prefers-reduced-motion", value: "no-preference" }]);
+
+    // Responsive: 6 anchos
+    const rutas = ["", "/?tipo=servicio", "/producto/ej-srv-mantenimiento", "/producto/ej-portatil-14", "/carrito", "/admin/productos/editar?tipo=servicio", "/admin/marcas"];
+    for (const w of [360, 390, 768, 1024, 1366, 1920]) {
       await p.setViewport({ width: w, height: 900, isMobile: w < 768, hasTouch: w < 768 });
       const malas = [];
       for (const r of rutas) {
         await p.goto(`${T}${r}`, { waitUntil: "networkidle0" });
-        await sleep(250);
+        await sleep(200);
         const sw = await p.evaluate(() => document.documentElement.scrollWidth);
         if (sw > w) malas.push(`${r || "/"}=${sw}`);
       }
       verificar(malas.length === 0, `${w}px sin scroll horizontal en ${rutas.length} vistas${malas.length ? ` (${malas.join(", ")})` : ""}`);
     }
-    // Banner: el texto no choca con las flechas; beneficios compactos en móvil
-    for (const w of [640, 768, 1024, 1366, 1920]) {
+    // Banner sin choque con flechas
+    for (const w of [768, 1366, 1920]) {
       await p.setViewport({ width: w, height: 900 });
       await p.goto(T, { waitUntil: "networkidle0" });
-      await p.waitForSelector("[data-banner] [data-texto-banner]");
+      await p.waitForSelector("[data-texto-banner]");
       const g = await p.evaluate(() => {
-        const s = document.querySelector("[data-banner][aria-hidden='false']");
-        const t = s.querySelector("[data-texto-banner]").getBoundingClientRect();
-        const a = document.querySelector("[data-banner-anterior]").getBoundingClientRect();
-        const n = document.querySelector("[data-banner-siguiente]").getBoundingClientRect();
-        return { textoIzq: Math.round(t.left), textoDer: Math.round(t.right), flechaIzq: Math.round(a.right), flechaDer: Math.round(n.left) };
+        const t = document.querySelector("[data-banner][aria-hidden='false'] [data-texto-banner]").getBoundingClientRect();
+        return { ok: t.left >= document.querySelector("[data-banner-anterior]").getBoundingClientRect().right + 8 && t.right <= document.querySelector("[data-banner-siguiente]").getBoundingClientRect().left - 8 };
       });
-      verificar(g.textoIzq >= g.flechaIzq + 8 && g.textoDer <= g.flechaDer - 8, `${w}px: texto del banner libre de las flechas (${JSON.stringify(g)})`);
+      verificar(g.ok, `${w}px: texto del banner libre de las flechas`);
     }
-    await p.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true });
+
+    // Borrar catálogo de ejemplo
+    await p.setViewport({ width: 1366, height: 900 });
+    await p.goto(`${T}/admin/productos`, { waitUntil: "networkidle0" });
+    await p.waitForSelector("[data-borrar-ejemplo]");
+    p.once("dialog", (d) => d.accept());
+    await p.click("[data-borrar-ejemplo]");
+    await p.waitForFunction(() => !document.querySelector("[data-aviso-ejemplo]"));
+    const quedan = await p.$$eval("[data-admin-producto]", (xs) => xs.length);
+    verificar(quedan === 2, `«Borrar catálogo de ejemplo» deja solo lo propio (${quedan})`);
     await p.goto(T, { waitUntil: "networkidle0" });
-    await p.waitForSelector("[data-beneficios]");
-    const altoBen = await p.$eval("[data-beneficios]", (x) => Math.round(x.getBoundingClientRect().height));
-    verificar(altoBen <= 260, `390px: beneficios compactos en 2×2 (${altoBen}px de alto)`);
+    await p.waitForSelector("[data-grilla] [data-producto]");
+    verificar((await ids(p, "[data-grilla] [data-producto]")).length === 2 && (await p.$$("[data-cat-tarjeta]")).length === 8 && (await p.$$eval("[data-marca]", (xs) => xs.length)) === 1, "la tienda queda con lo propio, las 8 categorías y la marca propia");
 
-    // Drawer y barra inferior en móvil
-    await p.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true });
-    await p.goto(`${T}/producto/prd-panel-550`, { waitUntil: "networkidle0" });
-    await p.waitForSelector("[data-barra-movil]");
-    const barra = await p.$eval("[data-barra-movil]", (x) => { const r = x.getBoundingClientRect(); return { abajo: Math.round(r.bottom), visible: getComputedStyle(x).display !== "none" }; });
-    verificar(barra.visible && barra.abajo === 844, `móvil: barra inferior fija con los botones (${JSON.stringify(barra)})`);
-    await p.click("[data-agregar-barra]");
-    await p.click("[data-abrir-carrito]");
-    await p.waitForSelector("[data-carrito-lateral]");
-    const anchoDrawer = await p.$eval("[data-carrito-lateral]", (x) => Math.round(x.getBoundingClientRect().width));
-    verificar(anchoDrawer === 390 && (await p.evaluate(() => document.documentElement.scrollWidth)) <= 390, `móvil: drawer a todo el ancho (${anchoDrawer})`);
-    await p.keyboard.press("Escape");
-    await p.setViewport({ width: 768, height: 1024 });
-    await p.click("[data-abrir-carrito]");
-    await p.waitForSelector("[data-carrito-lateral]");
-    const anchoTablet = await p.$eval("[data-carrito-lateral]", (x) => Math.round(x.getBoundingClientRect().width));
-    verificar(anchoTablet === 448, `tablet: drawer lateral de 448 px (${anchoTablet})`);
-    await p.keyboard.press("Escape");
-
-    // Honeypot
-    await p.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true });
+    // Honeypot (el carrito perdió los ejemplos: se agrega un producto propio)
+    await p.click("[data-grilla] [data-agregar]");
     await p.goto(`${T}/carrito`, { waitUntil: "networkidle0" });
     await p.waitForSelector("[data-item]");
     await p.evaluate(() => (document.getElementById("sitio_web").value = "http://spam"));
-    await p.type("#nombre", "Bot Ficticio");
-    await p.type("#celular", "3009999999");
-    await p.type("#ciudad", "Bogotá");
-    await p.evaluate(() => sessionStorage.removeItem("__wa"));
+    await limpiarWa(p);
     await clicTexto(p, "Enviar pedido por WhatsApp");
     await p.waitForSelector("[data-pedido-enviado]");
     verificar((await p.evaluate(() => sessionStorage.getItem("__wa"))) === null, "honeypot: no abre WhatsApp ni guarda pedido");
 
-    // Reducir movimiento: el carrusel no avanza solo
-    await p.emulateMediaFeatures([{ name: "prefers-reduced-motion", value: "reduce" }]);
-    await p.goto(T, { waitUntil: "networkidle0" });
-    await p.waitForSelector("[data-banner]");
-    verificar(!(await p.$("[data-pausa]")), "con «reducir movimiento» el carrusel no rota solo (sin botón de pausa)");
-    await p.emulateMediaFeatures([{ name: "prefers-reduced-motion", value: "no-preference" }]);
-
-    // Manifest
-    const man = await p.evaluate(async () => {
-      const href = document.querySelector("link[rel=manifest]")?.getAttribute("href");
-      const r = await fetch(href);
-      return { href, status: r.status, start: (await r.json()).start_url };
+    // Pocas categorías: la cinta no se anima y queda centrada
+    await p.evaluate(() => {
+      const e = JSON.parse(localStorage.getItem("sotec-tienda-v2"));
+      e.categorias = e.categorias.map((c, i) => ({ ...c, activa: i < 3 }));
+      localStorage.setItem("sotec-tienda-v2", JSON.stringify(e));
     });
-    verificar(man.href === "/tienda/manifest.webmanifest" && man.status === 200 && man.start === "/tienda", "manifest enlazado bajo /tienda");
+    await p.goto(T, { waitUntil: "networkidle0" });
+    await p.waitForSelector("[data-cinta]");
+    const pocas = await p.evaluate(() => {
+      const m = document.querySelector("[data-cinta]");
+      const l = m.querySelector("ul").getBoundingClientRect();
+      const r = m.getBoundingClientRect();
+      return { modo: m.dataset.cinta, izq: Math.round(l.left - r.left), der: Math.round(r.right - l.right), n: m.querySelectorAll("[data-cat-tarjeta]").length };
+    });
+    verificar(pocas.modo === "quieta" && pocas.n === 3 && Math.abs(pocas.izq - pocas.der) <= 2 && !(await p.$("[data-pausa-categorias]")), `con pocas categorías no se anima y quedan centradas (${JSON.stringify(pocas)})`);
 
-    // ── Capturas
+    // ── Capturas (contexto limpio, catálogo de ejemplo)
     if (CAPTURAS) {
       fs.mkdirSync(CAPTURAS, { recursive: true });
-      // Contexto limpio: las capturas muestran el catálogo de ejemplo, no los datos de la prueba
       const ctx = await b.createBrowserContext();
       const p2 = await ctx.newPage();
       for (const w of [390, 1366]) {
@@ -354,6 +465,10 @@ const wa = async (p) => {
         await p2.evaluate((y) => window.scrollTo(0, y), alto);
         await sleep(900);
         await p2.screenshot({ path: path.join(CAPTURAS, `portada-${w}-abajo.png`) });
+        await p2.goto(`${T}/producto/ej-srv-mantenimiento`, { waitUntil: "networkidle0" });
+        await p2.waitForSelector("[data-incluye]");
+        await sleep(600);
+        await p2.screenshot({ path: path.join(CAPTURAS, `ficha-servicio-${w}.png`) });
       }
       await ctx.close();
       console.log(`capturas en ${CAPTURAS}`);

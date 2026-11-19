@@ -44,8 +44,9 @@ h1, h2, h3 {
   .etiqueta {
     @apply mb-1 block text-sm font-semibold text-tinta;
   }
+  /* relative: contiene a los .sr-only absolutos (si no, escapan del recorte de los carruseles) */
   .tarjeta {
-    @apply rounded-2xl border border-linea bg-white shadow-[0_1px_2px_rgba(22,28,24,0.04)];
+    @apply relative rounded-2xl border border-linea bg-white shadow-[0_1px_2px_rgba(22,28,24,0.04)];
   }
   /* Gutter 16 px móvil · 24 px tablet · 32 px escritorio */
   .contenedor {
@@ -69,7 +70,35 @@ h1, h2, h3 {
   }
 }
 
+/* Cinta de categorías: bucle continuo (la lista está duplicada; -50% = una vuelta exacta) */
+@keyframes cinta {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+.cinta-animada {
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+}
+.cinta-pista {
+  animation-name: cinta;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  will-change: transform;
+}
+.cinta-animada:hover .cinta-pista,
+.cinta-animada:focus-within .cinta-pista,
+.cinta-pausada .cinta-pista {
+  animation-play-state: paused;
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .cinta-pista {
+    animation: none !important;
+  }
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;

@@ -5,7 +5,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 
 import * as C from "@/lib/carrito";
 import { obtenerRepo, type Repositorio } from "@/lib/datos";
-import { CONFIG_INICIAL, type Banner, type Categoria, type Configuracion, type ItemCarrito, type Producto } from "@/lib/tipos";
+import { CONFIG_INICIAL, type Banner, type Categoria, type Marca, type Configuracion, type ItemCarrito, type Producto } from "@/lib/tipos";
 
 const CLAVE_CARRITO = "sotec-tienda-carrito";
 
@@ -16,6 +16,7 @@ interface Ctx {
   categorias: Categoria[];
   productos: Producto[];
   banners: Banner[];
+  marcas: Marca[];
   config: Configuracion;
   recargar: () => Promise<void>;
   carrito: ItemCarrito[];
@@ -46,6 +47,7 @@ export function ProveedorTienda({ children }: { children: ReactNode }) {
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [productos, setProductos] = useState<Producto[]>([]);
   const [banners, setBanners] = useState<Banner[]>([]);
+  const [marcas, setMarcas] = useState<Marca[]>([]);
   const [carritoAbierto, setCarritoAbierto] = useState(false);
   const [config, setConfig] = useState<Configuracion>(CONFIG_INICIAL);
   const [carrito, setCarrito] = useState<ItemCarrito[]>([]);
@@ -56,9 +58,10 @@ export function ProveedorTienda({ children }: { children: ReactNode }) {
     const r = obtenerRepo();
     setRepo(r);
     try {
-      const [cs, ps, cfg, bs] = await Promise.all([r.categorias(), r.productos(), r.configuracion(), r.banners()]);
+      const [cs, ps, cfg, bs, ms] = await Promise.all([r.categorias(), r.productos(), r.configuracion(), r.banners(), r.marcas()]);
       setCategorias(cs);
       setBanners(bs);
+      setMarcas(ms);
       setProductos(ps);
       setConfig(cfg);
       setError(null);
@@ -103,6 +106,7 @@ export function ProveedorTienda({ children }: { children: ReactNode }) {
       categorias,
       productos,
       banners,
+      marcas,
       config,
       recargar,
       carrito,
@@ -119,7 +123,7 @@ export function ProveedorTienda({ children }: { children: ReactNode }) {
       abrirCarrito: () => setCarritoAbierto(true),
       cerrarCarrito: () => setCarritoAbierto(false),
     }),
-    [repo, listo, error, categorias, productos, banners, config, recargar, carrito, aviso, carritoAbierto],
+    [repo, listo, error, categorias, productos, banners, marcas, config, recargar, carrito, aviso, carritoAbierto],
   );
 
   return <Contexto.Provider value={valor}>{children}</Contexto.Provider>;
