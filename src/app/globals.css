@@ -1,0 +1,62 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  @apply bg-white font-sans text-texto antialiased;
+}
+
+h1, h2, h3 {
+  @apply font-titulo text-tinta;
+  letter-spacing: -0.015em;
+}
+
+:focus-visible {
+  outline: 3px solid #2c840b;
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60;
+  }
+  .btn-primario {
+    @apply btn bg-marca-btn text-white hover:bg-marca-oscuro;
+  }
+  .btn-secundario {
+    @apply btn border border-linea bg-white text-tinta hover:bg-fondo;
+  }
+  .btn-peligro {
+    @apply btn border border-red-200 bg-white text-red-700 hover:bg-red-50;
+  }
+  .campo {
+    @apply block min-h-[44px] w-full rounded-xl border border-linea bg-white px-3 py-2 text-base text-tinta placeholder:text-tenue focus:border-marca-btn;
+  }
+  .etiqueta {
+    @apply mb-1 block text-sm font-semibold text-tinta;
+  }
+  .tarjeta {
+    @apply rounded-2xl border border-linea bg-white;
+  }
+  .contenedor {
+    @apply mx-auto w-full max-w-6xl px-4 sm:px-6;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

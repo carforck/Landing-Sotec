@@ -1,0 +1,153 @@
+/**
+ * Catálogo de ejemplo del modo demostración. Productos genéricos (sin marcas de terceros) y
+ * precios de referencia ficticios: SOTEC los reemplaza desde el panel.
+ */
+import type { Categoria, Producto } from "./tipos";
+
+const img = (n: string) => `/img/categorias/${n}.webp`;
+
+export const CATEGORIAS_SEMILLA: Categoria[] = [
+  { id: "cat-solar", nombre: "Energía solar", imagen: img("panel-solar-casa"), orden: 1, activa: true },
+  { id: "cat-alarmas", nombre: "Seguridad electrónica (alarmas)", imagen: img("residencial"), orden: 2, activa: true },
+  { id: "cat-cctv", nombre: "CCTV", imagen: img("cctv-instalacion-camara"), orden: 3, activa: true },
+  { id: "cat-redes", nombre: "Redes y telecomunicaciones", imagen: img("telecom-rack-cableado"), orden: 4, activa: true },
+  { id: "cat-automatizacion", nombre: "Automatización", imagen: img("tablero-electrico"), orden: 5, activa: true },
+  { id: "cat-acceso", nombre: "Control de acceso", imagen: img("control-acceso-torniquetes"), orden: 6, activa: true },
+];
+
+const CREADO = "2026-11-19T12:00:00.000Z";
+let n = 0;
+const p = (x: Omit<Producto, "orden" | "creado" | "activo"> & { activo?: boolean }): Producto => ({ activo: true, ...x, orden: ++n, creado: CREADO });
+
+export const PRODUCTOS_SEMILLA: Producto[] = [
+  p({
+    id: "prd-panel-550",
+    nombre: "Panel solar monocristalino 550 W",
+    categoriaId: "cat-solar",
+    descripcion: "Panel de alta eficiencia para techos residenciales y comerciales.",
+    fichaTecnica: "Potencia: 550 W\nTecnología: monocristalino PERC\nEficiencia: 21 %\nGarantía de producto: 12 años",
+    precio: 690000,
+    imagenes: [img("panel-solar-casa"), img("techo-solar")],
+    destacado: true,
+  }),
+  p({
+    id: "prd-kit-solar-3kw",
+    nombre: "Kit solar híbrido 3 kW con instalación",
+    categoriaId: "cat-solar",
+    descripcion: "Paneles, inversor híbrido, estructura y protecciones. Incluye visita técnica.",
+    fichaTecnica: "Potencia pico: 3 kWp\nInversor híbrido 3 kW\nEstructura en aluminio\nInstalación y puesta en marcha",
+    precio: null,
+    imagenes: [img("instalacion-solar"), img("techo-solar")],
+    destacado: true,
+  }),
+  p({
+    id: "prd-bateria-5kwh",
+    nombre: "Batería de litio 5 kWh",
+    categoriaId: "cat-solar",
+    descripcion: "Almacenamiento de energía para respaldo en cortes y uso nocturno.",
+    fichaTecnica: "Química: LiFePO4\nCapacidad: 5 kWh\nCiclos: más de 6.000\nMontaje en pared",
+    precio: 5400000,
+    imagenes: [img("instalacion-solar")],
+    destacado: false,
+  }),
+  p({
+    id: "prd-alarma-kit",
+    nombre: "Kit de alarma inalámbrica para hogar",
+    categoriaId: "cat-alarmas",
+    descripcion: "Panel, teclado, 3 sensores de movimiento, 2 de puerta y sirena. Monitoreable.",
+    fichaTecnica: "Comunicación: Wi-Fi y celular\nSensores inalámbricos\nAplicación móvil\nBatería de respaldo",
+    precio: 1250000,
+    imagenes: [img("residencial"), img("citofonia-teclado")],
+    destacado: true,
+  }),
+  p({
+    id: "prd-sensor-pir",
+    nombre: "Sensor de movimiento inalámbrico",
+    categoriaId: "cat-alarmas",
+    descripcion: "Detector infrarrojo con inmunidad a mascotas para ampliar tu alarma.",
+    fichaTecnica: "Alcance: 12 m\nInmunidad a mascotas: hasta 25 kg\nBatería: 3 años aprox.",
+    precio: 145000,
+    imagenes: [img("residencial")],
+    destacado: false,
+  }),
+  p({
+    id: "prd-camara-domo",
+    nombre: "Cámara domo IP 4 MP",
+    categoriaId: "cat-cctv",
+    descripcion: "Cámara para interiores con visión nocturna y detección de personas.",
+    fichaTecnica: "Resolución: 4 MP\nVisión nocturna: 30 m\nAlimentación PoE\nGrado de protección: IP67",
+    precio: 320000,
+    imagenes: [img("cctv-instalacion-camara")],
+    destacado: true,
+  }),
+  p({
+    id: "prd-camara-ptz",
+    nombre: "Cámara PTZ exterior 25x",
+    categoriaId: "cat-cctv",
+    descripcion: "Movimiento y zoom óptico para parqueaderos, patios y perímetros.",
+    fichaTecnica: "Zoom óptico: 25x\nGiro: 360°\nSeguimiento automático\nIP66",
+    precio: null,
+    imagenes: [img("camara-ptz"), img("cctv-poste-industrial")],
+    destacado: false,
+  }),
+  p({
+    id: "prd-nvr-8",
+    nombre: "Grabador NVR 8 canales",
+    categoriaId: "cat-cctv",
+    descripcion: "Graba hasta 8 cámaras IP con acceso desde el celular.",
+    fichaTecnica: "Canales: 8 PoE\nDisco: hasta 10 TB (no incluido)\nSalida HDMI 4K",
+    precio: 780000,
+    imagenes: [img("cctv-poste-industrial")],
+    destacado: false,
+  }),
+  p({
+    id: "prd-switch-poe",
+    nombre: "Switch PoE 16 puertos administrable",
+    categoriaId: "cat-redes",
+    descripcion: "Alimenta y conecta cámaras, puntos de acceso y teléfonos IP.",
+    fichaTecnica: "Puertos: 16 PoE+ gigabit\n2 puertos SFP\nPresupuesto PoE: 250 W",
+    precio: 1450000,
+    imagenes: [img("cableado-switch"), img("telecom-rack-cableado")],
+    destacado: false,
+  }),
+  p({
+    id: "prd-fibra",
+    nombre: "Tendido de fibra óptica (por metro)",
+    categoriaId: "cat-redes",
+    descripcion: "Instalación de fibra monomodo con fusión y certificación.",
+    fichaTecnica: "Fibra monomodo\nFusión y pruebas OTDR\nPrecio por metro instalado",
+    precio: null,
+    imagenes: [img("fibra-optica")],
+    destacado: false,
+  }),
+  p({
+    id: "prd-tablero",
+    nombre: "Tablero de automatización con PLC",
+    categoriaId: "cat-automatizacion",
+    descripcion: "Diseño y montaje de tableros para control de motores, bombas e iluminación.",
+    fichaTecnica: "Diseño a la medida\nPLC y HMI\nProtecciones eléctricas\nPlanos y puesta en marcha",
+    precio: null,
+    imagenes: [img("tablero-electrico")],
+    destacado: true,
+  }),
+  p({
+    id: "prd-lector-biometrico",
+    nombre: "Control de acceso biométrico",
+    categoriaId: "cat-acceso",
+    descripcion: "Lector de huella, tarjeta y clave con registro de asistencia.",
+    fichaTecnica: "Capacidad: 3.000 huellas\nTarjeta de proximidad\nConexión TCP/IP",
+    precio: 560000,
+    imagenes: [img("citofonia-teclado")],
+    destacado: false,
+  }),
+  p({
+    id: "prd-torniquete",
+    nombre: "Torniquete trípode de acero",
+    categoriaId: "cat-acceso",
+    descripcion: "Control de paso para porterías, empresas y gimnasios.",
+    fichaTecnica: "Acero inoxidable\nBidireccional\nIntegrable con lector biométrico",
+    precio: null,
+    imagenes: [img("control-acceso-torniquetes")],
+    destacado: false,
+  }),
+];
