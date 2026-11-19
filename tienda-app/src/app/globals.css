@@ -1,0 +1,108 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  @apply bg-white font-sans text-texto antialiased;
+}
+
+h1, h2, h3 {
+  @apply font-titulo text-tinta;
+  letter-spacing: -0.015em;
+}
+
+:focus-visible {
+  outline: 3px solid #2c840b;
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60;
+  }
+  .btn-primario {
+    @apply btn bg-marca-btn text-white hover:bg-marca-oscuro;
+  }
+  .btn-secundario {
+    @apply btn border border-linea bg-white text-tinta hover:bg-fondo;
+  }
+  .btn-peligro {
+    @apply btn border border-red-200 bg-white text-red-700 hover:bg-red-50;
+  }
+  .campo {
+    @apply block min-h-[44px] w-full rounded-xl border border-linea bg-white px-3 py-2 text-base text-tinta placeholder:text-tenue focus:border-marca-btn;
+  }
+  .etiqueta {
+    @apply mb-1 block text-sm font-semibold text-tinta;
+  }
+  /* relative: contiene a los .sr-only absolutos (si no, escapan del recorte de los carruseles) */
+  .tarjeta {
+    @apply relative rounded-2xl border border-linea bg-white shadow-[0_1px_2px_rgba(22,28,24,0.04)];
+  }
+  /* Gutter 16 px móvil · 24 px tablet · 32 px escritorio */
+  .contenedor {
+    @apply mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8;
+  }
+  /* Ritmo vertical de las bandas de la portada */
+  .seccion {
+    @apply py-10 sm:py-14 lg:py-20;
+  }
+  .seccion-compacta {
+    @apply py-6 sm:py-8 lg:py-10;
+  }
+  .titulo-seccion {
+    @apply font-titulo font-bold text-tinta;
+    font-size: clamp(1.25rem, 1rem + 1vw, 1.75rem);
+    line-height: 1.2;
+  }
+  .titulo-hero {
+    font-size: clamp(1.5rem, 1.1rem + 2vw, 2.5rem);
+    line-height: 1.1;
+  }
+}
+
+/* Cinta de categorías: bucle continuo (la lista está duplicada; -50% = una vuelta exacta) */
+@keyframes cinta {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+.cinta-animada {
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+}
+.cinta-pista {
+  animation-name: cinta;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  will-change: transform;
+}
+.cinta-animada:hover .cinta-pista,
+.cinta-animada:focus-within .cinta-pista,
+.cinta-pausada .cinta-pista {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cinta-pista {
+    animation: none !important;
+  }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

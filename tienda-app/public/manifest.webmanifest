@@ -1,0 +1,11 @@
+{
+  "name": "Tienda virtual SOTEC",
+  "short_name": "Tienda SOTEC",
+  "start_url": "/tienda",
+  "scope": "/tienda",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2c840b",
+  "lang": "es-CO",
+  "icons": [{ "src": "/tienda/icon.png", "sizes": "any", "type": "image/png" }]
+}
