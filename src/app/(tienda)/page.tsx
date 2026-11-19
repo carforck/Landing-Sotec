@@ -26,19 +26,20 @@ export default function Inicio() {
           <Beneficios />
         </div>
       </section>
+      {/* Categorías: padding inferior menor para no dejar hueco antes de Destacados */}
       <section className="bg-white">
-        <div className="contenedor seccion">
+        <div className="contenedor pb-8 pt-10 sm:pb-10 sm:pt-12 lg:pb-12 lg:pt-14">
           <FilaCategorias />
         </div>
       </section>
       <section className="bg-fondo">
-        <div className="contenedor seccion space-y-10 sm:space-y-14">
+        <div className="contenedor space-y-10 py-10 sm:space-y-12 sm:py-12 lg:py-14">
           <FilasPorCategoria />
         </div>
       </section>
       <BandaAyuda />
       <section className="bg-white">
-        <div className="contenedor seccion">
+        <div className="contenedor py-10 sm:py-12 lg:py-16">
           <Suspense fallback={<div aria-busy="true">Cargando catálogo…</div>}>
             <Catalogo />
           </Suspense>

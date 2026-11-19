@@ -271,6 +271,26 @@ const wa = async (p) => {
       }
       verificar(malas.length === 0, `${w}px sin scroll horizontal en ${rutas.length} vistas${malas.length ? ` (${malas.join(", ")})` : ""}`);
     }
+    // Banner: el texto no choca con las flechas; beneficios compactos en móvil
+    for (const w of [640, 768, 1024, 1366, 1920]) {
+      await p.setViewport({ width: w, height: 900 });
+      await p.goto(T, { waitUntil: "networkidle0" });
+      await p.waitForSelector("[data-banner] [data-texto-banner]");
+      const g = await p.evaluate(() => {
+        const s = document.querySelector("[data-banner][aria-hidden='false']");
+        const t = s.querySelector("[data-texto-banner]").getBoundingClientRect();
+        const a = document.querySelector("[data-banner-anterior]").getBoundingClientRect();
+        const n = document.querySelector("[data-banner-siguiente]").getBoundingClientRect();
+        return { textoIzq: Math.round(t.left), textoDer: Math.round(t.right), flechaIzq: Math.round(a.right), flechaDer: Math.round(n.left) };
+      });
+      verificar(g.textoIzq >= g.flechaIzq + 8 && g.textoDer <= g.flechaDer - 8, `${w}px: texto del banner libre de las flechas (${JSON.stringify(g)})`);
+    }
+    await p.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true });
+    await p.goto(T, { waitUntil: "networkidle0" });
+    await p.waitForSelector("[data-beneficios]");
+    const altoBen = await p.$eval("[data-beneficios]", (x) => Math.round(x.getBoundingClientRect().height));
+    verificar(altoBen <= 260, `390px: beneficios compactos en 2×2 (${altoBen}px de alto)`);
+
     // Drawer y barra inferior en móvil
     await p.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true });
     await p.goto(`${T}/producto/prd-panel-550`, { waitUntil: "networkidle0" });
@@ -321,23 +341,21 @@ const wa = async (p) => {
     // ── Capturas
     if (CAPTURAS) {
       fs.mkdirSync(CAPTURAS, { recursive: true });
-      const p2 = await b.newPage();
+      // Contexto limpio: las capturas muestran el catálogo de ejemplo, no los datos de la prueba
+      const ctx = await b.createBrowserContext();
+      const p2 = await ctx.newPage();
       for (const w of [390, 1366]) {
-        await p2.setViewport({ width: w, height: w < 768 ? 844 : 900, isMobile: w < 768, hasTouch: w < 768 });
-        for (const [nombre, ruta] of [["portada", ""], ["ficha", "/producto/prd-panel-550"]]) {
-          await p2.goto(`${T}${ruta}`, { waitUntil: "networkidle0" });
-          await p2.evaluate(async () => {
-            for (let y = 0; y < document.body.scrollHeight; y += 600) {
-              window.scrollTo(0, y);
-              await new Promise((r) => setTimeout(r, 60));
-            }
-            window.scrollTo(0, 0);
-          });
-          await sleep(500);
-          await p2.screenshot({ path: path.join(CAPTURAS, `${nombre}-${w}.png`), fullPage: true });
-        }
+        const alto = w < 768 ? 844 : 768;
+        await p2.setViewport({ width: w, height: alto, isMobile: w < 768, hasTouch: w < 768 });
+        await p2.goto(T, { waitUntil: "networkidle0" });
+        await p2.waitForSelector("[data-grilla] [data-producto]");
+        await sleep(600);
+        await p2.screenshot({ path: path.join(CAPTURAS, `portada-${w}-arriba.png`) });
+        await p2.evaluate((y) => window.scrollTo(0, y), alto);
+        await sleep(900);
+        await p2.screenshot({ path: path.join(CAPTURAS, `portada-${w}-abajo.png`) });
       }
-      await p2.close();
+      await ctx.close();
       console.log(`capturas en ${CAPTURAS}`);
     }
 

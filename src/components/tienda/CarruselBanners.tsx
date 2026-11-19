@@ -75,11 +75,14 @@ export function CarruselBanners() {
               {b.imagenMovil && <source media="(max-width: 639px)" srcSet={urlImagen(b.imagenMovil)} />}
               <img src={urlImagen(b.imagen)} alt="" className="h-full w-full object-cover" loading={k === 0 ? "eager" : "lazy"} />
             </picture>
-            <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/45 to-black/10" />
-            <div className="absolute inset-0 flex items-end p-5 pb-12 sm:items-center sm:p-10">
-              <div className="max-w-lg text-white">
+            {/* Degradado oscuro-verde detrás del texto (contraste AA): de abajo hacia arriba en móvil, de izquierda a derecha desde sm */}
+            <div className="absolute inset-0 bg-gradient-to-t from-[#0b140d]/95 via-[#0f2410]/70 to-[#0f2410]/10 sm:hidden" />
+            <div className="absolute inset-0 hidden bg-[linear-gradient(90deg,rgba(11,20,13,0.94)_0%,rgba(14,34,14,0.86)_38%,rgba(18,48,14,0.45)_65%,rgba(18,48,14,0.05)_100%)] sm:block" />
+            {/* El contenido deja libre la franja de las flechas (izquierda 8 px + 44 px) */}
+            <div className="absolute inset-0 flex items-end px-5 pb-12 pt-5 sm:items-center sm:py-10 sm:pl-20 sm:pr-20 lg:pl-24">
+              <div className="max-w-xl text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.45)]" data-texto-banner>
                 <h2 className="titulo-hero font-extrabold text-white">{b.titulo}</h2>
-                {b.texto && <p className="mt-2 text-sm text-white/90 sm:text-lg">{b.texto}</p>}
+                {b.texto && <p className="mt-2 text-sm text-white sm:text-lg">{b.texto}</p>}
                 {b.botonTexto && b.enlace && (
                   <Link href={b.enlace} tabIndex={k === i ? 0 : -1} className="btn-primario mt-4" data-boton-banner>
                     {b.botonTexto}
@@ -93,7 +96,7 @@ export function CarruselBanners() {
 
       {n > 1 && (
         <>
-          <button type="button" onClick={() => ir(i - 1)} aria-label="Banner anterior" className="absolute left-2 top-1/2 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/85 text-tinta shadow hover:bg-white sm:flex">
+          <button type="button" onClick={() => ir(i - 1)} aria-label="Banner anterior" data-banner-anterior className="absolute left-2 top-1/2 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/85 text-tinta shadow hover:bg-white sm:flex">
             <ChevronLeft className="h-5 w-5" aria-hidden />
           </button>
           <button type="button" onClick={() => ir(i + 1)} aria-label="Banner siguiente" className="absolute right-2 top-1/2 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/85 text-tinta shadow hover:bg-white sm:flex" data-banner-siguiente>
