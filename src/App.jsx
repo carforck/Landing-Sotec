@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   ArrowRight, ArrowUp, BadgeDollarSign, Check, Cpu, Facebook, Headset, Instagram, LogIn, Mail, MapPin, Menu, Minus, Pause, Phone,
-  Play, Plus, RadioTower, ShieldCheck, Sun, X,
+  Play, Plus, RadioTower, ShieldCheck, ShoppingBag, Sun, X,
 } from 'lucide-react';
 import {
-  ABOUT, APP_URL, CLIENTS, CONTACT, FAQ, HERO_SLIDES, NAV, PILLARS, SEGMENTS, SERVICES, STEPS, img, waLink,
+  ABOUT, APP_URL, CLIENTS, CONTACT, FAQ, HERO_FOCO, HERO_SLIDES, NAV, PILLARS, SEGMENTS, SERVICES, STEPS, img, video, waLink,
 } from './data.js';
 import { reduced, useFocusTrap, useInView, useSnapIndex } from './fx.js';
 import ScannerEye from './ScannerEye.jsx';
@@ -181,7 +181,11 @@ function Header({ scrolled, hidden, active }) {
             </a>
           ))}
           <a href={APP_URL} target="_blank" rel="noreferrer" className="btn btn--outline nav__app" onClick={() => setOpen(false)}>
-            <LogIn size={18} aria-hidden="true" /> <span><span className="nav__app-long">Acceder al </span>aplicativo</span>
+            <LogIn size={18} aria-hidden="true" /> <span><span className="nav__app-long">Acceder a </span>ControlOne</span>
+          </a>
+          <a href={`${import.meta.env.BASE_URL}tienda/`} className="btn btn--outline nav__tienda" title="Tienda virtual SOTEC · próximamente" onClick={() => setOpen(false)}>
+            <ShoppingBag size={18} aria-hidden="true" /> <span>Tienda<span className="nav__app-long"> virtual</span></span>
+            <span className="nav__pronto">Próximamente</span>
           </a>
           <a href="#contacto" className="btn btn--primary nav__cta" onClick={() => setOpen(false)}>
             Solicitar cotización
@@ -212,7 +216,7 @@ function Hero() {
       <div className="hero__frame">
       <div className="hero__bg" aria-hidden="true" data-parallax="-0.25">
         {HERO_SLIDES.map((s, i) => (
-          <img key={s} src={img(s)} alt="" className={i === slide ? 'is-on' : ''} />
+          <img key={s} src={img(s)} alt="" className={i === slide ? 'is-on' : ''} style={HERO_FOCO[s] ? { objectPosition: HERO_FOCO[s] } : undefined} />
         ))}
       </div>
       <div className="container hero__inner">
@@ -304,6 +308,23 @@ function Clients() {
 
 /* ---------- Servicios ---------- */
 
+// Video en bucle de un servicio (proyecto real): se descarga al acercarse a la pantalla y,
+// con «reducir movimiento», queda la imagen fija (póster).
+function ServiceVideo({ name, poster, alt }) {
+  const [ref, inView] = useInView(0.1);
+  const [still, setStill] = useState(true);
+  useEffect(() => setStill(reduced()), []);
+  return (
+    <div ref={ref} className="service__media">
+      {still ? (
+        <img src={img(poster)} alt={alt} loading="lazy" />
+      ) : (
+        <video src={inView ? video(name) : undefined} poster={img(poster)} autoPlay muted loop playsInline preload="none" aria-label={alt} />
+      )}
+    </div>
+  );
+}
+
 function Services({ onQuote }) {
   const trackRef = useRef(null);
   const [index, go] = useSnapIndex(trackRef);
@@ -321,7 +342,7 @@ function Services({ onQuote }) {
           {SERVICES.map((s, i) => (
             <article className={`service service--${i} reveal`} style={{ '--d': `${i * 60}ms` }} key={s.key}>
               <div className="service__img">
-                <img src={img(s.img)} alt={s.title} loading="lazy" />
+                {s.video ? <ServiceVideo name={s.video} poster={s.img} alt={s.title} /> : <img src={img(s.img)} alt={s.title} loading="lazy" />}
                 <span className="service__badge">{(() => { const I = SERVICE_ICONS[s.icon]; return <I size={20} aria-hidden="true" />; })()}</span>
               </div>
               <div className="service__body">
@@ -389,7 +410,7 @@ function About() {
     <section id="nosotros" className="section">
       <div className="container about">
         <div className="about__img reveal reveal--img">
-          <img data-parallax="0.08" src={img('proyecto-rack')} alt="Técnico organizando un rack de comunicaciones" loading="lazy" />
+          <img data-parallax="0.08" src={img('socios-sotec')} alt="Los socios fundadores de SOTEC trabajando en el taller" loading="lazy" style={{ objectPosition: 'center 8%' }} />
         </div>
         <div className="about__copy reveal">
           <p className="kicker">Nosotros</p>
@@ -606,7 +627,10 @@ function Footer() {
         </div>
       </div>
       <div className="container footer__bottom">
-        <span>© {new Date().getFullYear()} SOTEC. Todos los derechos reservados.</span>
+        <span>
+          © {new Date().getFullYear()} SOTEC. Todos los derechos reservados. · Hecho por{' '}
+          <a href={CONTACT.credito.url} target="_blank" rel="noopener" className="footer__credito">{CONTACT.credito.nombre}</a>
+        </span>
         <span className="footer__social">
           <a href={CONTACT.facebook} target="_blank" rel="noreferrer" aria-label="Facebook"><Facebook size={18} /></a>
           <a href={CONTACT.instagram} target="_blank" rel="noreferrer" aria-label="Instagram"><Instagram size={18} /></a>

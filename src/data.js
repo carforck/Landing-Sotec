@@ -8,6 +8,8 @@ export const CONTACT = {
   address: 'Urb. Altos de Plan Parejo, Mz Y Lote 7',
   facebook: 'https://www.facebook.com/sotecjm',
   instagram: 'https://www.instagram.com/sotec91',
+  // Desarrollo del sitio (crédito en el pie)
+  credito: { nombre: 'Vanttagetech', url: 'https://vanttagetech.com' },
   instagramReel: 'https://www.instagram.com/reel/Ct4fPhhpRY1/',
 };
 
@@ -32,7 +34,7 @@ export const SERVICES = [
   {
     key: 'seguridad',
     icon: 'ShieldCheck',
-    img: 'camara-muro',
+    img: 'cctv-poste-industrial',
     gallery: ['camara-ptz', 'control-acceso-torniquetes', 'citofonia-teclado'],
     title: 'Seguridad electrónica',
     short: 'Protege personas, bienes e instalaciones con tecnología confiable.',
@@ -50,7 +52,7 @@ export const SERVICES = [
   {
     key: 'telecom',
     icon: 'RadioTower',
-    img: 'fibra-optica',
+    img: 'telecom-rack-cableado',
     gallery: ['torre-telecom', 'cableado-switch', 'fibra-optica-2'],
     title: 'Telecomunicaciones',
     short: 'Conectividad estable para hogares, empresas y proyectos.',
@@ -68,8 +70,10 @@ export const SERVICES = [
   {
     key: 'energia',
     icon: 'Sun',
-    img: 'techo-solar',
-    gallery: ['instalacion-solar', 'panel-solar-casa', 'parqueadero-solar'],
+    // Proyecto real de SOTEC: video en bucle del techo solar (la imagen es su póster y el respaldo sin movimiento)
+    img: 'solar-techo',
+    video: 'solar-techo',
+    gallery: ['solar-equipo-vivienda', 'solar-tecnico-sotec', 'instalacion-solar', 'panel-solar-casa'],
     title: 'Energías renovables',
     short: 'Energía solar eficiente que reduce costos y cuida el entorno.',
     body:
@@ -86,7 +90,7 @@ export const SERVICES = [
   {
     key: 'automatizacion',
     icon: 'Cpu',
-    img: 'automatizacion-placa',
+    img: 'citofonia-teclado',
     gallery: ['residencial', 'tablero-electrico', 'citofonia-teclado'],
     title: 'Automatización',
     short: 'Espacios inteligentes que trabajan por ti.',
@@ -106,7 +110,7 @@ export const SERVICES = [
 export const SEGMENTS = {
   residencial: {
     label: 'Hogar y conjuntos',
-    img: 'residencial',
+    img: 'hogar-conjunto-poste',
     title: 'Tranquilidad para tu familia',
     text:
       'Soluciones residenciales sencillas de usar, que protegen tu casa y te permiten verla y controlarla desde cualquier lugar.',
@@ -119,7 +123,7 @@ export const SEGMENTS = {
   },
   empresarial: {
     label: 'Empresas',
-    img: 'comercio',
+    img: 'telecom-rack-tecnico',
     title: 'Operación segura y conectada',
     text:
       'Infraestructura tecnológica para negocios que necesitan continuidad, control de accesos y conectividad sin interrupciones.',
@@ -180,29 +184,32 @@ export const FAQ = [
 
 
 export const img = (name) => `${import.meta.env.BASE_URL}img/${name}.webp`;
+export const video = (name) => `${import.meta.env.BASE_URL}video/${name}.mp4`;
 
-export const HERO_SLIDES = ['techo-solar', 'control-acceso-torniquetes', 'tablero-electrico'];
+// Inicio: primero una foto real de SOTEC (su equipo instalando paneles)
+export const HERO_SLIDES = ['solar-equipo-vivienda', 'control-acceso-torniquetes', 'tablero-electrico'];
+// Encuadre de las fotos del inicio cuyo motivo no está al centro (object-position)
+export const HERO_FOCO = { 'solar-equipo-vivienda': '30% 6%' };
 
 
-// Fotos de referencia (banco de imágenes del sitio actual). Reemplazar por fotos reales de proyectos cuando existan.
+// Galería: fotos reales de proyectos de SOTEC primero; al final, unas pocas del banco de imágenes anterior.
 export const GALLERY_CATS = ['Todos', 'Seguridad', 'Telecomunicaciones', 'Energía solar', 'Instalación'];
 export const GALLERY = [
-  { src: 'camara-ptz', cat: 'Seguridad', title: 'Cámara PTZ para exteriores', tall: true },
-  { src: 'control-acceso-torniquetes', cat: 'Seguridad', title: 'Control de acceso con torniquetes' },
-  { src: 'torre-telecom', cat: 'Telecomunicaciones', title: 'Infraestructura de telecomunicaciones', tall: true },
+  { src: 'solar-equipo-vivienda', cat: 'Energía solar', title: 'Nuestro equipo instalando paneles en una vivienda' },
+  { src: 'telecom-rack-cableado', cat: 'Telecomunicaciones', title: 'Centro de cableado con cientos de puntos de red', tall: true },
+  { src: 'cctv-solar-rio', cat: 'Seguridad', title: 'Cámaras con energía solar a orillas del río', tall: true },
+  { src: 'solar-tecnico-sotec', cat: 'Energía solar', title: 'Técnico SOTEC bajo un arreglo solar', tall: true },
+  { src: 'cctv-instalacion-camara', cat: 'Seguridad', title: 'Instalación de cámara bajo cubierta', tall: true },
+  { src: 'redes-poste-tecnico', cat: 'Instalación', title: 'Trabajo en altura: iluminación y cámaras en poste', tall: true },
+  { src: 'cctv-poste-industrial', cat: 'Seguridad', title: 'Cámaras en poste para una planta industrial', tall: true },
+  { src: 'telecom-rack-tecnico', cat: 'Telecomunicaciones', title: 'Montaje de rack de comunicaciones', tall: true },
+  { src: 'cctv-tecnico-sotec', cat: 'Seguridad', title: 'Técnico SOTEC instalando videovigilancia', tall: true },
+  { src: 'hogar-conjunto-poste', cat: 'Instalación', title: 'Iluminación y red en conjunto residencial' },
   { src: 'techo-solar', cat: 'Energía solar', title: 'Sistema solar en cubierta' },
-  { src: 'citofonia-teclado', cat: 'Seguridad', title: 'Citofonía y teclado de acceso' },
-  { src: 'proyecto-rack', cat: 'Instalación', title: 'Organización de rack y centro de cableado', tall: true },
-  { src: 'fibra-optica', cat: 'Telecomunicaciones', title: 'Conexiones de fibra óptica' },
-  { src: 'instalacion-solar', cat: 'Energía solar', title: 'Montaje de paneles solares', tall: true },
-  { src: 'camara-residencial', cat: 'Seguridad', title: 'Videovigilancia residencial', tall: true },
+  { src: 'control-acceso-torniquetes', cat: 'Seguridad', title: 'Control de acceso con torniquetes' },
   { src: 'parqueadero-solar', cat: 'Energía solar', title: 'Parqueadero con cubierta solar' },
-  { src: 'tecnico-tablero', cat: 'Instalación', title: 'Revisión de tableros eléctricos' },
-  { src: 'cableado-switch', cat: 'Telecomunicaciones', title: 'Cableado estructurado' },
-  { src: 'panel-solar-casa', cat: 'Energía solar', title: 'Energía solar para el hogar', tall: true },
-  { src: 'tecnico-redes-aereas', cat: 'Instalación', title: 'Trabajo en redes aéreas' },
-  { src: 'camara-muro', cat: 'Seguridad', title: 'Cámara domo en fachada', tall: true },
-  { src: 'tecnico-cables', cat: 'Instalación', title: 'Conexionado eléctrico' },
+  { src: 'torre-telecom', cat: 'Telecomunicaciones', title: 'Infraestructura de telecomunicaciones', tall: true },
+  { src: 'fibra-optica', cat: 'Telecomunicaciones', title: 'Conexiones de fibra óptica' },
 ];
 
 // VALIDAR: ciudades y tipo de presencia. Solo la sede viene del sitio actual (Urb. Altos de Plan Parejo).
