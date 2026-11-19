@@ -1,7 +1,20 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "redirects": [
+    {
+      "source": "/tienda/",
+      "destination": "/tienda",
+      "permanent": true
+    }
+  ],
   "rewrites": [
-    { "source": "/tienda", "destination": "https://tienda-sotec.vercel.app/tienda" },
-    { "source": "/tienda/:path*", "destination": "https://tienda-sotec.vercel.app/tienda/:path*" }
+    {
+      "source": "/tienda",
+      "destination": "https://tienda-sotec.vercel.app/tienda"
+    },
+    {
+      "source": "/tienda/:path*",
+      "destination": "https://tienda-sotec.vercel.app/tienda/:path*"
+    }
   ]
 }
