@@ -120,7 +120,8 @@ async function escribirNumero(p, sel, valor) {
     await p.evaluate(() => document.activeElement.blur());
 
     const filas = await p.$$eval("[data-fila]", (xs) => xs.map((x) => x.getAttribute("data-fila")));
-    verificar(filas.slice(0, 3).join() === "ofertas,destacados,servicios" && filas.includes("cat-computo"), `carruseles Ofertas, Destacados, Servicios y por categoría (${filas.length})`);
+    verificar(filas.join() === "ofertas,destacados,servicios,cat-computo,cat-redes,cat-seguridad,cat-servicios", `7 carruseles: solo los que tienen 3+ ítems (${filas.join(", ")})`);
+    verificar(!filas.includes("cat-impresion") && !!(await p.$("[data-cinta] [data-cat-tarjeta='cat-impresion']")) && (await ids(p, "[data-grilla] [data-producto]")).includes("ej-impresora"), "«Impresión y periféricos» (1 ítem) no tiene carrusel pero sigue en la cinta y el catálogo");
     const hrefAdmin = await p.$$eval("[data-enlace-admin]", (xs) => xs.map((x) => `${x.getAttribute("data-enlace-admin")}:${x.getAttribute("href")}`));
     verificar(hrefAdmin.includes("encabezado:/tienda/admin") && hrefAdmin.includes("pie:/tienda/admin"), "«Administrar tienda» en encabezado y pie");
     const sinFoto = await p.$$eval("[data-grilla] [data-producto='ej-portatil-14'] [data-sin-foto] svg", (xs) => xs.length);
@@ -164,8 +165,8 @@ async function escribirNumero(p, sel, valor) {
     await sleep(400);
     const empresa = await ids(p, "[data-grilla] [data-producto]");
     verificar(empresa.length > 0 && !empresa.includes("ej-kit-alarma") && empresa.includes("ej-servidor-rack") && empresa.includes("ej-panel-550"), `«Para empresas» filtra el catálogo (${empresa.length})`);
-    const filaSolar = await ids(p, "[data-fila='cat-solar'] [data-producto]");
-    verificar(!filaSolar.includes("ej-srv-solar"), "los carruseles también respetan el segmento");
+    const filaSeg = await ids(p, "[data-fila='cat-seguridad'] [data-producto]");
+    verificar(filaSeg.length === 3 && !filaSeg.includes("ej-kit-alarma"), `los carruseles también respetan el segmento (${filaSeg.join(",")})`);
     await p.click("[data-segmento='todo']");
     await p.waitForFunction(() => !location.search.includes("segmento"));
     await p.waitForSelector("[data-filtro='tipo-servicio']");

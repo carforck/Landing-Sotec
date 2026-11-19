@@ -11,6 +11,7 @@ import { filtrar, filtrosDeUrl } from "../../src/lib/filtros";
 import { descuento, formatoCOP, textoPrecio } from "../../src/lib/formato";
 import { ICONOS, iconoDe } from "../../src/lib/iconos";
 import { normalizarConfig, normalizarProducto } from "../../src/lib/normalizar";
+import { MINIMO_CARRUSEL, filasPortada } from "../../src/lib/portada";
 import { urlImagen } from "../../src/lib/rutas";
 import { BANNERS_SEMILLA, CATEGORIAS_SEMILLA, MARCAS_SEMILLA, PRODUCTOS_SEMILLA, esEjemplo } from "../../src/lib/semilla";
 import { CONFIG_INICIAL, type DatosCliente, type Producto } from "../../src/lib/tipos";
@@ -170,6 +171,30 @@ const cctvAnual = P("ej-srv-mant-cctv"); // servicio a cotizar, empresa
     assert.ok(filtrar(PRODUCTOS_SEMILLA, { q: "ejemplo beta" }, nombres).every((p) => p.marcaId === "mar-beta"));
   });
   await caso("filtrosDeUrl ignora valores inválidos", () => assert.deepEqual(filtrosDeUrl(new URLSearchParams("tipo=kit&segmento=oficina&categoria=cat-solar")), { categoria: "cat-solar", tipo: "", segmento: "", marca: "", q: "" }));
+
+  // ── Carruseles de la portada: solo con 3+ ítems
+  await caso("portada: 7 carruseles con el catálogo de ejemplo", () => {
+    const f = filasPortada(PRODUCTOS_SEMILLA, CATEGORIAS_SEMILLA);
+    assert.deepEqual(f.map((x) => x.id), ["ofertas", "destacados", "servicios", "cat-computo", "cat-redes", "cat-seguridad", "cat-servicios"]);
+    assert.ok(f.every((x) => x.productos.length >= MINIMO_CARRUSEL));
+  });
+  await caso("portada: categorías con menos de 3 no tienen carrusel", () => {
+    const ids = filasPortada(PRODUCTOS_SEMILLA, CATEGORIAS_SEMILLA).map((x) => x.id);
+    for (const c of ["cat-servidores", "cat-solar", "cat-automatizacion", "cat-impresion"]) assert.ok(!ids.includes(c), c);
+  });
+  await caso("portada: respeta el segmento (empresa) al contar", () => {
+    const f = filasPortada(PRODUCTOS_SEMILLA, CATEGORIAS_SEMILLA, "empresa");
+    const seg = f.find((x) => x.id === "cat-seguridad");
+    assert.ok(seg && seg.productos.length === 3 && !seg.productos.some((p) => p.id === "ej-kit-alarma"));
+    assert.ok(f.every((x) => x.productos.length >= 3 && x.productos.every((p) => p.segmentos.includes("empresa"))));
+    assert.ok(f.find((x) => x.id === "servicios")?.verTodo?.includes("segmento=empresa"));
+  });
+  await caso("portada: exactamente 3 sí, 2 no", () => {
+    const cat = [{ ...CATEGORIAS_SEMILLA[0], id: "c" }];
+    const mk = (i: number) => ({ ...panel, id: `x${i}`, categoriaId: "c", destacado: false, nuevo: false, precioAnterior: null });
+    assert.equal(filasPortada([mk(1), mk(2)], cat).length, 0);
+    assert.deepEqual(filasPortada([mk(1), mk(2), mk(3)], cat).map((x) => x.id), ["c"]);
+  });
 
   // ── Semilla, íconos y normalización
   await caso("semilla: 8 categorías con ícono válido", () => {
