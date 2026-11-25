@@ -1,5 +1,5 @@
 /* Pruebas unitarias: carrito, precios y ofertas, mensajes de WhatsApp, segmentos, filtros, antispam,
- * validación, normalización y adaptador local. */
+ * validación, normalización, adaptador local y utilidades del adaptador Supabase. */
 import assert from "node:assert/strict";
 
 import { Package, Sun } from "lucide-react";
@@ -7,6 +7,7 @@ import { Package, Sun } from "lucide-react";
 import { LIMITE_PEDIDOS, VENTANA_MS, esBot, revisarLimite } from "../../src/lib/antispam";
 import * as C from "../../src/lib/carrito";
 import { CLAVE_LOCAL, CLAVE_SESION, almacenMemoria, crearRepoLocal } from "../../src/lib/datos/local";
+import { explicarError, rutaEnBucket } from "../../src/lib/datos/supabase";
 import { filtrar, filtrosDeUrl } from "../../src/lib/filtros";
 import { descuento, formatoCOP, textoPrecio } from "../../src/lib/formato";
 import { ICONOS, iconoDe } from "../../src/lib/iconos";
@@ -327,6 +328,23 @@ const cctvAnual = P("ej-srv-mant-cctv"); // servicio a cotizar, empresa
   });
   await repo.salir();
   await caso("local: salir cierra la sesión", async () => assert.equal(await repo.sesion(), null));
+
+  // Adaptador Supabase: mensajes de error y rutas de Storage
+  await caso("supabase: errores de crear_pedido pasan tal cual (P0001)", () =>
+    assert.equal(explicarError({ message: "Demasiados pedidos seguidos. Espera unos minutos.", code: "P0001" }, "No se pudo registrar el pedido"), "Demasiados pedidos seguidos. Espera unos minutos."));
+  await caso("supabase: categoría con productos (23503) explicada en español", () =>
+    assert.match(explicarError({ message: "update or delete on table violates foreign key constraint", code: "23503" }, "No se pudo eliminar la categoría"), /^No se pudo eliminar la categoría: está en uso/));
+  await caso("supabase: RLS (42501) pide entrar con un administrador", () =>
+    assert.match(explicarError({ message: "new row violates row-level security policy", code: "42501" }, "No se pudo guardar"), /no tiene permiso/));
+  await caso("supabase: sin conexión", () => assert.match(explicarError({ message: "TypeError: Failed to fetch" }, "No se pudo guardar"), /no hay conexión/));
+  await caso("supabase: rutaEnBucket solo reconoce imágenes de nuestro bucket", () => {
+    const base = "https://abc.supabase.co";
+    assert.equal(rutaEnBucket(`${base}/storage/v1/object/public/productos/img-1-foto%20a.webp`, base), "img-1-foto a.webp");
+    assert.equal(rutaEnBucket(`${base}/storage/v1/object/public/productos/img-2.webp?v=1`, `${base}/`), "img-2.webp");
+    assert.equal(rutaEnBucket("/img/categorias/techo-solar.webp", base), null);
+    assert.equal(rutaEnBucket("https://otro.supabase.co/storage/v1/object/public/productos/x.webp", base), null);
+    assert.equal(rutaEnBucket(`${base}/storage/v1/object/public/otro-bucket/x.webp`, base), null);
+  });
 
   if (fallos.length) {
     console.error(fallos.join("\n"));

@@ -244,10 +244,24 @@ insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_typ
 values ('productos', 'productos', true, 1048576, array['image/webp', 'image/jpeg', 'image/png'])
 on conflict (id) do nothing;
 
--- Lectura pública por URL (bucket público); solo admin sube, cambia o borra.
+-- Lectura pública por URL (bucket público, sin listar archivos); solo admin sube, cambia o borra.
+-- Storage exige también SELECT para borrar o reemplazar (DELETE … RETURNING): sin esta política el
+-- borrado «funciona» pero no elimina nada y las imágenes quedan huérfanas.
+create policy imagenes_admin_lee on storage.objects for select to authenticated using (bucket_id = 'productos' and public.es_admin());
 create policy imagenes_admin_sube on storage.objects for insert to authenticated with check (bucket_id = 'productos' and public.es_admin());
 create policy imagenes_admin_cambia on storage.objects for update to authenticated using (bucket_id = 'productos' and public.es_admin());
 create policy imagenes_admin_borra on storage.objects for delete to authenticated using (bucket_id = 'productos' and public.es_admin());
+
+-- ─── Permisos de la API (Data API / PostgREST) ────────────────────────────
+-- Explícitos para no depender de los privilegios por defecto del proyecto. La RLS de arriba decide
+-- qué filas ve o cambia cada rol: anon solo lee lo público; escribir exige rol admin.
+grant usage on schema public to anon, authenticated;
+grant select on public.categorias, public.marcas, public.productos, public.banners, public.configuracion to anon, authenticated;
+grant insert, update, delete on public.categorias, public.marcas, public.productos, public.banners, public.configuracion to authenticated;
+grant select, update, delete on public.pedidos to authenticated;
+grant select, update on public.perfiles to authenticated;
+revoke insert, update, delete on public.categorias, public.marcas, public.productos, public.banners, public.configuracion, public.pedidos, public.perfiles from anon;
+revoke insert on public.pedidos from anon, authenticated; -- los pedidos solo entran por crear_pedido()
 
 -- Primer administrador (después de crear el usuario en Authentication):
 --   update public.perfiles set rol = 'admin' where id = (select id from auth.users where email = '<correo>');

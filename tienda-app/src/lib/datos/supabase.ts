@@ -76,8 +76,32 @@ const aPedido = (f: Fila): Pedido => ({
   creado: String(f.creado),
 });
 
-function falla(error: { message: string } | null, texto: string): void {
-  if (error) throw new ErrorDatos(`${texto}: ${error.message}`);
+type ErrorSupabase = { message: string; code?: string } | null;
+
+/** Mensaje entendible para el panel y la tienda (los de PostgreSQL vienen en inglés). */
+export function explicarError(error: NonNullable<ErrorSupabase>, texto: string): string {
+  const m = error.message ?? "";
+  // Errores propios de crear_pedido() (raise exception en español)
+  if (error.code === "P0001") return m;
+  if (error.code === "23503") return `${texto}: está en uso por otros registros (por ejemplo, una categoría con productos). Muévelos o desactívala.`;
+  if (error.code === "23505") return `${texto}: ya existe un registro con ese identificador.`;
+  if (error.code === "23514" || error.code === "22P02") return `${texto}: algún dato no es válido.`;
+  if (error.code === "42501" || /row-level security|permission denied|Unauthorized/i.test(m)) return `${texto}: tu sesión no tiene permiso. Sal y vuelve a entrar con un usuario administrador.`;
+  if (/JWT|expired/i.test(m)) return `${texto}: la sesión expiró. Vuelve a entrar.`;
+  if (/Failed to fetch|NetworkError|Load failed|fetch failed/i.test(m)) return `${texto}: no hay conexión con la base de datos. Revisa tu internet e intenta de nuevo.`;
+  if (/maximum allowed size|exceeded/i.test(m)) return `${texto}: la imagen es demasiado pesada.`;
+  if (/mime type/i.test(m)) return `${texto}: formato de imagen no permitido (usa JPG, PNG o WebP).`;
+  return `${texto}: ${m}`;
+}
+
+function falla(error: ErrorSupabase, texto: string): void {
+  if (error) throw new ErrorDatos(explicarError(error, texto));
+}
+
+/** Ruta dentro del bucket si la URL es una imagen subida a nuestro Storage; si no, null. */
+export function rutaEnBucket(url: string, base: string): string | null {
+  const prefijo = `${base.replace(/\/$/, "")}/storage/v1/object/public/${BUCKET_IMAGENES}/`;
+  return url.startsWith(prefijo) ? decodeURIComponent(url.slice(prefijo.length).split("?")[0]) : null;
 }
 
 export function crearRepoSupabase(url: string, anonKey: string): Repositorio {
@@ -97,13 +121,35 @@ export function crearRepoSupabase(url: string, anonKey: string): Repositorio {
     falla(error, texto);
     return (data ?? []).map(f);
   }
+  // Columnas con imágenes por tabla: al reemplazar o borrar se quitan de Storage (no quedan huérfanas)
+  const IMAGENES: Record<string, string[]> = { productos: ["imagenes"], categorias: ["imagen"], marcas: ["logo"], banners: ["imagen", "imagen_movil"] };
+  const urlsDe = (fila: Fila | null | undefined, tabla: string): string[] =>
+    (IMAGENES[tabla] ?? []).flatMap((c) => {
+      const v = fila?.[c];
+      return Array.isArray(v) ? v.map(String) : typeof v === "string" && v ? [v] : [];
+    });
+  async function anterior(tabla: string, id: unknown): Promise<Fila | null> {
+    if (!IMAGENES[tabla]) return null;
+    const { data } = await sb.from(tabla).select(IMAGENES[tabla].join(",")).eq("id", String(id)).maybeSingle();
+    return (data as Fila | null) ?? null;
+  }
+  async function limpiarImagenes(antes: string[], despues: string[]) {
+    const quedan = new Set(despues);
+    const rutas = antes.filter((u) => !quedan.has(u)).map((u) => rutaEnBucket(u, url)).filter((r): r is string => !!r);
+    // Si falla no se interrumpe al usuario: el cambio en la base ya quedó hecho
+    if (rutas.length) await sb.storage.from(BUCKET_IMAGENES).remove(rutas).catch(() => null);
+  }
   async function guardar(tabla: string, fila: Fila, texto: string) {
+    const previa = await anterior(tabla, fila.id);
     const { error } = await sb.from(tabla).upsert(fila);
     falla(error, texto);
+    await limpiarImagenes(urlsDe(previa, tabla), urlsDe(fila, tabla));
   }
   async function borrar(tabla: string, id: string, texto: string) {
+    const previa = await anterior(tabla, id);
     const { error } = await sb.from(tabla).delete().eq("id", id);
     falla(error, texto);
+    await limpiarImagenes(urlsDe(previa, tabla), []);
   }
 
   return {
@@ -153,6 +199,19 @@ export function crearRepoSupabase(url: string, anonKey: string): Repositorio {
     async salir() {
       await sb.auth.signOut();
     },
+    async recuperarClave(correo, volverA) {
+      const { error } = await sb.auth.resetPasswordForEmail(correo, { redirectTo: volverA });
+      // No se revela si el correo existe; solo se informa el límite de envíos
+      if (error && /rate limit|security purposes/i.test(error.message)) throw new ErrorDatos("Ya se envió un correo hace poco. Espera un minuto e intenta de nuevo.");
+    },
+    async cambiarClave(nueva) {
+      const { error } = await sb.auth.updateUser({ password: nueva });
+      if (error) {
+        if (/should be different/i.test(error.message)) throw new ErrorDatos("La nueva contraseña debe ser distinta de la anterior.");
+        if (/at least|weak|characters/i.test(error.message)) throw new ErrorDatos("La contraseña es muy débil: usa al menos 10 caracteres.");
+        falla(error, "No se pudo cambiar la contraseña");
+      }
+    },
 
     async guardarProducto(p) {
       await guardar("productos", deProducto(p), "No se pudo guardar el producto");
@@ -163,7 +222,7 @@ export function crearRepoSupabase(url: string, anonKey: string): Repositorio {
       await guardar("categorias", deCategoria(c), "No se pudo guardar la categoría");
       return c;
     },
-    eliminarCategoria: (id) => borrar("categorias", id, "No se pudo eliminar la categoría (¿tiene productos?)"),
+    eliminarCategoria: (id) => borrar("categorias", id, "No se pudo eliminar la categoría"),
     async guardarBanner(b) {
       await guardar("banners", deBanner(b), "No se pudo guardar el banner");
       return b;

@@ -7,6 +7,7 @@ import { ArrowLeft, Search, Settings, ShoppingCart } from "lucide-react";
 
 import { useTienda } from "@/components/Proveedor";
 import { resumen } from "@/lib/carrito";
+import { PANEL_DISPONIBLE } from "@/lib/datos/modo";
 import { SITIO_SOTEC, urlImagen } from "@/lib/rutas";
 
 function Buscador({ id }: { id: string }) {
@@ -65,10 +66,12 @@ export function Encabezado() {
           </Suspense>
         </div>
         <nav className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2" aria-label="Principal">
-          <Link href="/admin" className="btn w-11 px-0 text-tenue hover:bg-fondo hover:text-tinta lg:w-auto lg:px-3" aria-label="Administrar tienda" title="Administrar tienda" data-enlace-admin="encabezado">
-            <Settings className="h-5 w-5 lg:h-4 lg:w-4" aria-hidden />
-            <span className="hidden text-xs font-medium lg:inline">Administrar tienda</span>
-          </Link>
+          {PANEL_DISPONIBLE && (
+            <Link href="/admin" className="btn w-11 px-0 text-tenue hover:bg-fondo hover:text-tinta lg:w-auto lg:px-3" aria-label="Administrar tienda" title="Administrar tienda" data-enlace-admin="encabezado">
+              <Settings className="h-5 w-5 lg:h-4 lg:w-4" aria-hidden />
+              <span className="hidden text-xs font-medium lg:inline">Administrar tienda</span>
+            </Link>
+          )}
           <a href={SITIO_SOTEC} className="btn w-11 px-0 text-tenue hover:bg-fondo hover:text-tinta xl:w-auto xl:px-3" aria-label="Volver a sotecse.com">
             <ArrowLeft className="h-4 w-4" aria-hidden />
             <span className="hidden text-xs font-medium xl:inline">sotecse.com</span>

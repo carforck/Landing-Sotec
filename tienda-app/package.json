@@ -10,7 +10,10 @@
     "typecheck": "tsc --noEmit",
     "test:unit": "tsx tests/unit/todo.test.ts",
     "test:e2e": "node tests/e2e/tienda.cjs",
-    "test:db": "bash scripts/probar-db.sh"
+    "test:db": "bash scripts/probar-db.sh",
+    "test:e2e:panel-cerrado": "node tests/e2e/panel-cerrado.cjs",
+    "test:e2e:supabase": "node tests/e2e/tienda-supabase.cjs",
+    "supabase:local": "bash scripts/probar-supabase.sh"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",
