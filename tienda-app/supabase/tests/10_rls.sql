@@ -17,6 +17,10 @@ begin
 end $$;
 grant execute on all functions in schema pg_temp to anon, authenticated;
 
+-- 0002 carga las 8 categorías base
+select pg_temp.ok((select count(*) = 8 from public.categorias where activa), 'migración 0002: 8 categorías base');
+delete from public.categorias;
+
 -- Datos (como postgres)
 insert into auth.users values ('00000000-0000-0000-0000-00000000000a', 'admin@prueba.test'), ('00000000-0000-0000-0000-00000000000b', 'otro@prueba.test');
 update public.perfiles set rol = 'admin' where id = '00000000-0000-0000-0000-00000000000a';
@@ -46,8 +50,9 @@ select pg_temp.ok((select count(*) = 1 from public.banners), 'anon solo ve banne
 select pg_temp.falla($$insert into public.banners (id, imagen) values ('ban-z', '/img/z.webp')$$, 'anon no crea banners');
 select pg_temp.falla($$insert into public.pedidos (codigo, cliente, celular, items) values ('T-XXXXXX', '{}', '3001234567', '[]')$$, 'anon no inserta pedidos directo');
 select pg_temp.falla($$insert into public.productos (id, nombre, categoria_id) values ('prd-x', 'Hackeado', 'cat-solar')$$, 'anon no crea productos');
-update public.productos set precio = 1 where id = 'prd-panel';
+select pg_temp.falla($$update public.productos set precio = 1 where id = 'prd-panel'$$, 'anon no cambia precios (sin permiso UPDATE)');
 select pg_temp.falla($$insert into storage.objects (bucket_id, name) values ('productos', 'x.webp')$$, 'anon no sube imágenes');
+select pg_temp.ok((select count(*) = 0 from storage.objects), 'anon no lista archivos de Storage');
 
 -- crear_pedido: recalcula precios, ignora inactivos, valida
 select pg_temp.ok(
@@ -113,10 +118,17 @@ update public.banners set activo = true where id = 'ban-2';
 update public.categorias set icono = 'sol' where id = 'cat-solar';
 select pg_temp.falla($$update public.categorias set icono = '<script>' where id = 'cat-solar'$$, 'ícono de categoría validado');
 insert into storage.objects (bucket_id, name) values ('productos', 'foto.webp');
+select pg_temp.ok((select count(*) = 1 from storage.objects), 'admin ve sus imágenes en Storage (necesario para borrarlas)');
 update public.configuracion set whatsapp_empresa = '573000000000' where id = 1;
 select pg_temp.falla($$update public.configuracion set whatsapp_hogar = 'abc' where id = 1$$, 'configuración valida el número');
 reset role;
--- (sin política SELECT en storage.objects: el bucket es público y se lee por URL; se cuenta como postgres)
+-- (anon no tiene SELECT en storage.objects: el bucket es público y se lee por URL; se cuenta como postgres)
 select pg_temp.ok((select count(*) = 1 from storage.objects), 'admin sube imágenes');
+set role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000b', false);
+select pg_temp.ok((select count(*) = 0 from storage.objects), 'usuario sin rol no ve archivos de Storage');
+delete from storage.objects;
+reset role;
+select pg_temp.ok((select count(*) = 1 from storage.objects), 'usuario sin rol no borra imágenes');
 select pg_temp.ok((select whatsapp_empresa = '573000000000' and whatsapp_hogar = '573104696060' from public.configuracion), 'admin cambia el WhatsApp de empresas');
 \echo 'Todas las pruebas de base de datos pasaron'
