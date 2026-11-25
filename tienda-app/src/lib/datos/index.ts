@@ -13,7 +13,6 @@ export function obtenerRepo(): Repositorio {
   return repo;
 }
 
-export const MODO_DATOS = process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? "supabase" : "local";
-
+export { MODO_DATOS, PANEL_DISPONIBLE } from "./modo";
 export type { Repositorio, Sesion, Modo, NuevoPedido } from "./repositorio";
 export { ErrorDatos, nuevoId } from "./repositorio";

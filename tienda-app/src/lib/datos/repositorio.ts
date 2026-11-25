@@ -34,6 +34,10 @@ export interface Repositorio {
   sesion(): Promise<Sesion | null>;
   entrar(correo: string, clave: string): Promise<Sesion>;
   salir(): Promise<void>;
+  /** Solo Supabase: envía el correo para restablecer la contraseña (vuelve a `volverA`). */
+  recuperarClave?(correo: string, volverA: string): Promise<void>;
+  /** Solo Supabase: cambia la contraseña del usuario con sesión (también tras el enlace del correo). */
+  cambiarClave?(nueva: string): Promise<void>;
   guardarProducto(p: Producto): Promise<Producto>;
   eliminarProducto(id: string): Promise<void>;
   guardarCategoria(c: Categoria): Promise<Categoria>;

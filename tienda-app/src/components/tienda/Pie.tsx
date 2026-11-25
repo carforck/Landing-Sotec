@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Settings } from "lucide-react";
 
+import { PANEL_DISPONIBLE } from "@/lib/datos/modo";
 import { SITIO_SOTEC } from "@/lib/rutas";
 
 export function Pie() {
@@ -23,9 +24,11 @@ export function Pie() {
           <p className="font-semibold text-white">Contacto</p>
           <p className="mt-2">info@sotecse.com</p>
           <a className="mt-2 inline-flex min-h-[44px] items-center underline underline-offset-4 hover:text-white" href={SITIO_SOTEC}>sotecse.com</a>
-          <Link href="/admin" className="mt-1 flex min-h-[44px] items-center gap-2 text-white/80 underline-offset-4 hover:text-white hover:underline" data-enlace-admin="pie">
-            <Settings className="h-4 w-4" aria-hidden /> Administrar tienda
-          </Link>
+          {PANEL_DISPONIBLE && (
+            <Link href="/admin" className="mt-1 flex min-h-[44px] items-center gap-2 text-white/80 underline-offset-4 hover:text-white hover:underline" data-enlace-admin="pie">
+              <Settings className="h-4 w-4" aria-hidden /> Administrar tienda
+            </Link>
+          )}
         </div>
       </div>
       <div className="border-t border-white/10 px-4 py-5 text-center text-xs">Precios en pesos colombianos (COP), sujetos a confirmación. © {new Date().getFullYear()} SOTEC</div>
