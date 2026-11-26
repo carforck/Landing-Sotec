@@ -3,22 +3,26 @@
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowLeft, CircleAlert, ClipboardList, Database, Loader2, LogIn, Mail, MailCheck, ShieldCheck, FolderTree, GalleryHorizontal, KeyRound, Tags, LayoutDashboard, LogOut, Package, Settings, Store, TriangleAlert } from "lucide-react";
+import { ArrowLeft, CircleAlert, ClipboardList, Database, Loader2, LogIn, Mail, MailCheck, ShieldCheck, FolderTree, GalleryHorizontal, KeyRound, Tags, LayoutDashboard, LogOut, Menu, Package, Settings, Store, TriangleAlert, X, ExternalLink, type LucideIcon } from "lucide-react";
 
 import { useTienda } from "@/components/Proveedor";
 import { CampoClave } from "@/components/admin/CampoClave";
+import { Aviso } from "@/components/tienda/Aviso";
 import { ErrorDatos, PANEL_DISPONIBLE, type Sesion } from "@/lib/datos";
 import { BASE, urlImagen } from "@/lib/rutas";
 
-const MENU = [
-  { href: "/admin", texto: "Resumen", Icono: LayoutDashboard },
+type ItemMenu = { href: string; texto: string; Icono: LucideIcon; insignia?: number };
+
+const INICIO: ItemMenu = { href: "/admin", texto: "Inicio", Icono: LayoutDashboard };
+const CATALOGO: ItemMenu[] = [
   { href: "/admin/productos", texto: "Productos y servicios", Icono: Package },
   { href: "/admin/categorias", texto: "Categorías", Icono: FolderTree },
-  { href: "/admin/banners", texto: "Banners y promos", Icono: GalleryHorizontal },
   { href: "/admin/marcas", texto: "Marcas", Icono: Tags },
-  { href: "/admin/pedidos", texto: "Pedidos", Icono: ClipboardList },
-  { href: "/admin/configuracion", texto: "Configuración", Icono: Settings },
+  { href: "/admin/banners", texto: "Banners y promos", Icono: GalleryHorizontal },
 ];
+const PEDIDOS: ItemMenu = { href: "/admin/pedidos", texto: "Pedidos", Icono: ClipboardList };
+const CONFIGURACION: ItemMenu = { href: "/admin/configuracion", texto: "Configuración", Icono: Settings };
+const CLAVE: ItemMenu = { href: "/admin/clave", texto: "Contraseña", Icono: KeyRound };
 
 export function AvisoDemo() {
   const { repo } = useTienda();
@@ -249,6 +253,8 @@ function PanelAbierto({ children }: { children: ReactNode }) {
   const { repo, recargar } = useTienda();
   const ruta = usePathname();
   const [sesion, setSesion] = useState<Sesion | null | undefined>(undefined);
+  const [menuAbierto, setMenuAbierto] = useState(false);
+  const [pendientes, setPendientes] = useState(0);
 
   const revisar = useCallback(async () => {
     if (!repo) return;
@@ -259,44 +265,108 @@ function PanelAbierto({ children }: { children: ReactNode }) {
     void revisar();
   }, [revisar]);
 
+  // Al cambiar de pantalla: cierra el menú del celular y actualiza la insignia de pedidos pendientes.
+  useEffect(() => {
+    setMenuAbierto(false);
+    if (!repo || !sesion?.esAdmin) return;
+    let vigente = true;
+    repo
+      .pedidos()
+      .then((ps) => vigente && setPendientes(ps.filter((p) => p.estado === "pendiente").length))
+      .catch(() => undefined);
+    return () => {
+      vigente = false;
+    };
+  }, [ruta, repo, sesion]);
+
+  useEffect(() => {
+    if (!menuAbierto) return;
+    const alTeclear = (e: KeyboardEvent) => e.key === "Escape" && setMenuAbierto(false);
+    window.addEventListener("keydown", alTeclear);
+    return () => window.removeEventListener("keydown", alTeclear);
+  }, [menuAbierto]);
+
   if (sesion === undefined) return <main className="p-6" aria-busy="true">Cargando…</main>;
   if (!sesion || !sesion.esAdmin) return <Acceso alEntrar={setSesion} />;
 
   const activo = (href: string) => (href === "/admin" ? ruta === "/admin" : ruta.startsWith(href));
+  const grupos: { titulo?: string; items: ItemMenu[] }[] = [
+    { items: [INICIO] },
+    { titulo: "Catálogo", items: CATALOGO },
+    { titulo: "Ventas", items: [{ ...PEDIDOS, insignia: pendientes }] },
+    { titulo: "Ajustes", items: [CONFIGURACION, ...(repo?.cambiarClave ? [CLAVE] : [])] },
+  ];
+  const claseItem = "flex min-h-[44px] w-full items-center gap-3 rounded-xl px-3 text-sm font-semibold transition-colors focus-visible:outline-white";
+
+  async function salir() {
+    await repo?.salir();
+    await recargar();
+    setSesion(null);
+  }
 
   return (
     <div className="min-h-screen bg-fondo md:flex">
-      <aside className="border-b border-linea bg-oscuro text-white md:sticky md:top-0 md:h-screen md:w-60 md:shrink-0 md:border-b-0">
-        <div className="flex items-center justify-between gap-2 px-4 py-3 md:block md:py-5">
-          <p className="font-titulo text-lg font-bold">Tienda SOTEC</p>
-          <p className="hidden text-xs text-white/60 md:block">{sesion.correo}</p>
-        </div>
-        <nav aria-label="Panel" className="flex gap-1 overflow-x-auto px-2 pb-2 md:flex-col md:overflow-visible md:pb-0">
-          {[...MENU, ...(repo?.cambiarClave ? [{ href: "/admin/clave", texto: "Contraseña", Icono: KeyRound }] : [])].map(({ href, texto, Icono }) => (
-            <Link
-              key={href}
-              href={href}
-              aria-current={activo(href) ? "page" : undefined}
-              className={`btn shrink-0 justify-start whitespace-nowrap ${activo(href) ? "bg-white/15 text-white" : "text-white/75 hover:bg-white/10 hover:text-white"}`}
-            >
-              <Icono className="h-4 w-4" aria-hidden /> {texto}
-            </Link>
-          ))}
-          <Link href="/" className="btn shrink-0 justify-start whitespace-nowrap text-white/75 hover:bg-white/10 hover:text-white">
-            <Store className="h-4 w-4" aria-hidden /> Ver tienda
-          </Link>
+      <aside className="sticky top-0 z-40 bg-oscuro text-white md:h-screen md:w-64 md:shrink-0 md:overflow-y-auto">
+        <div className="flex items-center justify-between gap-2 px-4 py-2 md:block md:px-5 md:py-5">
+          <div className="min-w-0">
+            <p className="font-titulo text-lg font-bold">Tienda SOTEC</p>
+            <p className="hidden text-xs text-white/60 md:block">Panel de administración</p>
+          </div>
           <button
             type="button"
-            className="btn shrink-0 justify-start whitespace-nowrap text-white/75 hover:bg-white/10 hover:text-white"
-            onClick={async () => {
-              await repo?.salir();
-              await recargar();
-              setSesion(null);
-            }}
+            className="flex min-h-[44px] items-center gap-2 rounded-xl border border-white/25 px-4 text-sm font-semibold hover:bg-white/10 focus-visible:outline-white md:hidden"
+            aria-expanded={menuAbierto}
+            aria-controls="menu-panel"
+            onClick={() => setMenuAbierto((v) => !v)}
+            data-boton-menu
           >
-            <LogOut className="h-4 w-4" aria-hidden /> Salir
+            {menuAbierto ? <X className="h-5 w-5" aria-hidden /> : <Menu className="h-5 w-5" aria-hidden />}
+            {menuAbierto ? "Cerrar" : "Menú"}
+            {!menuAbierto && pendientes > 0 && <Insignia n={pendientes} />}
           </button>
-        </nav>
+        </div>
+        <div
+          id="menu-panel"
+          className={`${menuAbierto ? "flex" : "hidden"} max-h-[calc(100dvh-60px)] flex-col overflow-y-auto border-t border-white/10 px-3 pb-4 md:flex md:max-h-none md:overflow-visible md:border-t-0`}
+        >
+          <nav aria-label="Panel" className="space-y-4 pt-3 md:pt-0">
+            {grupos.map((g, i) => (
+              <div key={g.titulo ?? i}>
+                {g.titulo && <p className="px-3 pb-1 text-xs font-semibold uppercase tracking-wider text-white/50">{g.titulo}</p>}
+                <ul className="space-y-0.5">
+                  {g.items.map(({ href, texto, Icono, insignia }) => (
+                    <li key={href}>
+                      <Link
+                        href={href}
+                        aria-current={activo(href) ? "page" : undefined}
+                        className={`${claseItem} ${activo(href) ? "bg-white/15 text-white" : "text-white/75 hover:bg-white/10 hover:text-white"}`}
+                      >
+                        <Icono className="h-5 w-5 shrink-0" aria-hidden />
+                        <span className="flex-1">{texto}</span>
+                        {!!insignia && <Insignia n={insignia} etiqueta={`${insignia} ${insignia === 1 ? "pedido pendiente" : "pedidos pendientes"}`} />}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+            <div>
+              <a href={`${BASE}/`} target="_blank" rel="noopener" className={`${claseItem} text-white/75 hover:bg-white/10 hover:text-white`} data-ver-tienda>
+                <Store className="h-5 w-5 shrink-0" aria-hidden />
+                <span className="flex-1">Ver tienda</span>
+                <ExternalLink className="h-4 w-4 shrink-0" aria-hidden />
+                <span className="sr-only">(se abre en otra pestaña)</span>
+              </a>
+            </div>
+          </nav>
+          <div className="mt-4 border-t border-white/10 pt-4 md:mt-6">
+            <p className="px-3 text-xs text-white/60">Sesión iniciada como</p>
+            <p className="truncate px-3 text-sm font-medium text-white" title={sesion.correo}>{sesion.correo || "Modo demostración"}</p>
+            <button type="button" className={`${claseItem} mt-2 border border-white/20 text-white hover:bg-white/10`} onClick={salir} data-salir>
+              <LogOut className="h-5 w-5 shrink-0" aria-hidden /> Salir
+            </button>
+          </div>
+        </div>
       </aside>
       <main className="min-w-0 flex-1 p-4 sm:p-6">
         <div className="mx-auto max-w-5xl space-y-4">
@@ -304,6 +374,15 @@ function PanelAbierto({ children }: { children: ReactNode }) {
           {children}
         </div>
       </main>
+      <Aviso />
     </div>
+  );
+}
+
+function Insignia({ n, etiqueta }: { n: number; etiqueta?: string }) {
+  return (
+    <span className="inline-flex min-w-[1.5rem] items-center justify-center rounded-full bg-amber-400 px-1.5 text-xs font-bold leading-6 text-tinta" aria-label={etiqueta}>
+      {n > 99 ? "99+" : n}
+    </span>
   );
 }
